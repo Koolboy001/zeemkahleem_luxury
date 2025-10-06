@@ -180,14 +180,27 @@ if (empty($cart_items)) {
         document.addEventListener('DOMContentLoaded', function() {
             const localCart = JSON.parse(localStorage.getItem('cart')) || {};
             if (Object.keys(localCart).length > 0) {
+                // Convert cart to FormData for better compatibility
+                const formData = new FormData();
+                formData.append('cart', JSON.stringify(localCart));
+                
                 fetch('sync_cart.php', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({cart: localCart})
-                }).then(r => r.json()).then(data => {
-                    if (data.success) {
-                        location.reload();
+                    body: formData
+                }).then(r => {
+                    if (!r.ok) {
+                        throw new Error('Network response was not ok');
                     }
+                    return r.json();
+                }).then(data => {
+                    if (data.success) {
+                        console.log('Cart synced successfully');
+                        location.reload();
+                    } else {
+                        console.error('Cart sync failed:', data.message);
+                    }
+                }).catch(error => {
+                    console.error('Error syncing cart:', error);
                 });
             }
         });
