@@ -84,13 +84,49 @@ if (!file_exists('uploads')) {
 
 // Helper functions
 function slugify($text) {
+    // Replace non-letter or digits by -
     $text = preg_replace('~[^\pL\d]+~u', '-', $text);
-    $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+    
+    // Check if iconv is available, if not use a fallback
+    if (function_exists('iconv')) {
+        $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+    } else {
+        // Fallback: remove non-ASCII characters
+        $text = preg_replace('/[^\x00-\x7F]/', '', $text);
+    }
+    
+    // Remove unwanted characters
     $text = preg_replace('~[^-\w]+~', '', $text);
     $text = trim($text, '-');
     $text = preg_replace('~-+~', '-', $text);
     $text = strtolower($text);
-    return $text ?: 'n-a';
+    
+    if (empty($text)) {
+        return 'n-a';
+    }
+    
+    return $text;
+}
+
+// Alternative slugify function without iconv dependency
+function simple_slugify($text) {
+    // Convert to lowercase
+    $text = strtolower($text);
+    
+    // Replace non-alphanumeric characters with hyphens
+    $text = preg_replace('/[^a-z0-9]+/', '-', $text);
+    
+    // Trim hyphens from both ends
+    $text = trim($text, '-');
+    
+    // Remove consecutive hyphens
+    $text = preg_replace('/-+/', '-', $text);
+    
+    if (empty($text)) {
+        return 'n-a';
+    }
+    
+    return $text;
 }
 
 function h($string) {
