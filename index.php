@@ -6,6 +6,102 @@ $search = trim($_GET['q'] ?? '');
 $cat_filter = isset($_GET['cat']) ? (int)$_GET['cat'] : 0;
 $categories = $pdo->query("SELECT * FROM categories ORDER BY name")->fetchAll();
 
+// Check for sitemap request
+if (isset($_GET['sitemap']) && $_GET['sitemap'] == 'xml') {
+    header('Content-Type: application/xml; charset=utf-8');
+    echo '<?xml version="1.0" encoding="UTF-8"?>';
+    ?>
+    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+            xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+        
+        <url>
+            <loc>https://zeemkahleemluxury.pxxl.click/</loc>
+            <lastmod><?= date('Y-m-d') ?></lastmod>
+            <changefreq>daily</changefreq>
+            <priority>1.0</priority>
+        </url>
+        
+        <?php
+        // Categories
+        foreach ($categories as $category) {
+            echo '<url>
+                <loc>https://zeemkahleemluxury.pxxl.click/?cat=' . $category['id'] . '</loc>
+                <lastmod>' . date('Y-m-d') . '</lastmod>
+                <changefreq>weekly</changefreq>
+                <priority>0.8</priority>
+            </url>';
+        }
+        
+        // Products
+        $products = $pdo->query("SELECT * FROM products ORDER BY created_at DESC")->fetchAll();
+        foreach ($products as $product) {
+            $images = explode(',', $product['images']);
+            echo '<url>
+                <loc>https://zeemkahleemluxury.pxxl.click/</loc>
+                <lastmod>' . date('Y-m-d', strtotime($product['updated_at'] ?: $product['created_at'])) . '</lastmod>
+                <changefreq>monthly</changefreq>
+                <priority>0.7</priority>';
+            
+            if (!empty($images[0])) {
+                echo '<image:image>
+                    <image:loc>https://zeemkahleemluxury.pxxl.click/uploads/' . htmlspecialchars($images[0]) . '</image:loc>
+                    <image:title>' . htmlspecialchars($product['name']) . ' - ZEEMKAHLEEM LUXURY</image:title>
+                    <image:caption>' . htmlspecialchars($product['description'] ?: $product['name']) . '</image:caption>
+                </image:image>';
+            }
+            
+            echo '</url>';
+        }
+        ?>
+    </urlset>
+    <?php
+    exit;
+}
+
+// Check for RSS request
+if (isset($_GET['rss']) && $_GET['rss'] == 'feed') {
+    header('Content-Type: application/rss+xml; charset=utf-8');
+    $products = $pdo->query("SELECT p.*, c.name as category_name FROM products p 
+                             JOIN categories c ON p.category_id = c.id 
+                             ORDER BY p.created_at DESC LIMIT 50")->fetchAll();
+
+    echo '<?xml version="1.0" encoding="UTF-8"?>';
+    ?>
+    <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <channel>
+        <title>ZEEMKAHLEEM LUXURY - Premium Fashion Store</title>
+        <link>https://zeemkahleemluxury.pxxl.click/</link>
+        <description>Latest luxury fashion products from ZEEMKAHLEEM LUXURY store</description>
+        <language>en-us</language>
+        <atom:link href="https://zeemkahleemluxury.pxxl.click/?rss=feed" rel="self" type="application/rss+xml" />
+        <lastBuildDate><?= date('r') ?></lastBuildDate>
+        <ttl>60</ttl>
+        
+        <?php foreach ($products as $product): 
+            $images = explode(',', $product['images']);
+        ?>
+        <item>
+            <title><?= htmlspecialchars($product['name']) ?></title>
+            <link>https://zeemkahleemluxury.pxxl.click/</link>
+            <description>
+                <![CDATA[
+                <img src="https://zeemkahleemluxury.pxxl.click/uploads/<?= $images[0] ?>" alt="<?= htmlspecialchars($product['name']) ?>" />
+                <p><?= htmlspecialchars($product['description'] ?: 'Luxury fashion product from ZEEMKAHLEEM LUXURY') ?></p>
+                <p>Price: ₦<?= number_format($product['price'], 2) ?></p>
+                <p>Category: <?= htmlspecialchars($product['category_name']) ?></p>
+                ]]>
+            </description>
+            <category><?= htmlspecialchars($product['category_name']) ?></category>
+            <guid isPermaLink="false">product-<?= $product['id'] ?></guid>
+            <pubDate><?= date('r', strtotime($product['created_at'])) ?></pubDate>
+        </item>
+        <?php endforeach; ?>
+    </channel>
+    </rss>
+    <?php
+    exit;
+}
+
 // Search functionality
 $search_results = [];
 if (!empty($search)) {
@@ -57,25 +153,104 @@ foreach ($categories as $category) {
         $latest_products[$category['name']] = $products;
     }
 }
+
+// Get products for structured data
+$structured_products = [];
+if (!empty($search_results)) {
+    $structured_products = $search_results;
+} elseif ($cat_filter > 0) {
+    $structured_products = $category_products;
+} else {
+    foreach ($latest_products as $category_products_array) {
+        $structured_products = array_merge($structured_products, $category_products_array);
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Primary Meta Tags -->
     <title>
         <?php 
         if (!empty($search)) {
-            echo "Search: " . h($search) . " - ZEEMKAHLEEM LUXURY";
+            echo "Search: " . h($search) . " - ZEEMKAHLEEM LUXURY Fashion Store";
         } elseif ($cat_filter > 0 && $current_category) {
-            echo h($current_category['name']) . " - ZEEMKAHLEEM LUXURY";
+            echo h($current_category['name']) . " - ZEEMKAHLEEM LUXURY Premium Fashion";
         } else {
-            echo "ZEEMKAHLEEM LUXURY - Premium Fashion";
+            echo "ZEEMKAHLEEM LUXURY - Premium Fashion Store | Luxury Clothing & Style";
         }
         ?>
     </title>
+    
+    <meta name="description" content="ZEEMKAHLEEM LUXURY - Premium fashion store offering exclusive luxury clothing, designer outfits, and sophisticated style. Shop the latest collections and elevate your fashion game.">
+    <meta name="keywords" content="zeemkahleem, luxury fashion, premium clothing, designer clothes, luxury store, fashion Nigeria, zeemkahleem luxury, online fashion store">
+    <meta name="author" content="ZEEMKAHLEEM LUXURY">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://zeemkahleemluxury.pxxl.click/">
+    <meta property="og:title" content="ZEEMKAHLEEM LUXURY - Premium Fashion Store">
+    <meta property="og:description" content="Discover exclusive luxury fashion collections at ZEEMKAHLEEM LUXURY. Premium clothing, designer outfits, and sophisticated style for the modern individual.">
+    <meta property="og:image" content="https://zeemkahleemluxury.pxxl.click/uploads/zeemkahleem-luxury-banner.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="ZEEMKAHLEEM LUXURY">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://zeemkahleemluxury.pxxl.click/">
+    <meta property="twitter:title" content="ZEEMKAHLEEM LUXURY - Premium Fashion Store">
+    <meta property="twitter:description" content="Discover exclusive luxury fashion collections at ZEEMKAHLEEM LUXURY. Premium clothing and designer outfits.">
+    <meta property="twitter:image" content="https://zeemkahleemluxury.pxxl.click/uploads/zeemkahleem-luxury-banner.jpg">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://zeemkahleemluxury.pxxl.click/">
+    
+    <!-- SEO Header Links -->
+    <link rel="sitemap" type="application/xml" href="?sitemap=xml">
+    <link rel="alternate" type="application/rss+xml" title="ZEEMKAHLEEM LUXURY Products" href="?rss=feed">
+
+    <!-- Preload critical resources -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ClothingStore",
+        "name": "ZEEMKAHLEEM LUXURY",
+        "description": "Premium luxury fashion store offering exclusive clothing collections and designer outfits",
+        "url": "https://zeemkahleemluxury.pxxl.click/",
+        "logo": "https://zeemkahleemluxury.pxxl.click/uploads/zeemkahleem-logo.jpg",
+        "telephone": "+2349160935693",
+        "email": "info@zeemkahleemluxury.com",
+        "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "NG"
+        },
+        "openingHours": "Mo-Su 09:00-20:00",
+        "priceRange": "₦₦₦",
+        "sameAs": [
+            "https://www.instagram.com/zeemkhaleem_closet0/",
+            "https://www.tiktok.com/@zeemkhaleem_closets"
+        ],
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://zeemkahleemluxury.pxxl.click/?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+
     <style>
         :root {
             --primary: #d4af37;
@@ -501,7 +676,7 @@ foreach ($categories as $category) {
             background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80');
             background-size: cover;
             background-position: center;
-            background-attachment: fixed;
+            background-attachment: scroll;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -1222,7 +1397,11 @@ foreach ($categories as $category) {
             margin-bottom: 1rem;
         }
 
-        /* ... (Rest of your existing CSS remains exactly the same) ... */
+        /* Preload critical images */
+        .product-image {
+            loading: lazy;
+            fetchpriority: high;
+        }
     </style>
 </head>
 <body data-theme="dark">
@@ -1308,13 +1487,21 @@ foreach ($categories as $category) {
     <!-- Navigation Overlay -->
     <div class="nav-overlay" id="navOverlay" onclick="closeNavDrawer()"></div>
 
-    <!-- Breadcrumb Navigation -->
+    <!-- Enhanced Breadcrumb with Schema -->
     <?php if ($cat_filter > 0 && $current_category): ?>
-        <div class="breadcrumb">
-            <a href="index.php">Home</a>
-            <span class="breadcrumb-separator">/</span>
-            <span class="current-category"><?= h($current_category['name']) ?></span>
-        </div>
+    <nav class="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList">
+        <span itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <a href="index.php" itemprop="item">
+                <span itemprop="name">Home</span>
+            </a>
+            <meta itemprop="position" content="1" />
+        </span>
+        <span class="breadcrumb-separator">/</span>
+        <span itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <span class="current-category" itemprop="name"><?= h($current_category['name']) ?></span>
+            <meta itemprop="position" content="2" />
+        </span>
+    </nav>
     <?php endif; ?>
 
     <!-- Hero Section (Only show on homepage) -->
@@ -1354,7 +1541,7 @@ foreach ($categories as $category) {
                         $images = explode(',', $product['images']);
                     ?>
                         <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)">
-                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image">
+                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy">
                             <div class="product-info">
                                 <h3><?= h($product['name']) ?></h3>
                                 <p style="color: var(--accent); margin-bottom: 0.5rem;"><?= h($product['category_name']) ?></p>
@@ -1390,7 +1577,7 @@ foreach ($categories as $category) {
                         $images = explode(',', $product['images']);
                     ?>
                         <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)">
-                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image">
+                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy">
                             <div class="product-info">
                                 <h3><?= h($product['name']) ?></h3>
                                 <div class="product-price">₦<?= number_format($product['price'], 2) ?></div>
@@ -1412,7 +1599,7 @@ foreach ($categories as $category) {
                         $images = explode(',', $product['images']);
                     ?>
                         <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)">
-                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image">
+                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy">
                             <div class="product-info">
                                 <h3><?= h($product['name']) ?></h3>
                                 <div class="product-price">₦<?= number_format($product['price'], 2) ?></div>
@@ -1430,17 +1617,18 @@ foreach ($categories as $category) {
     <!-- Luxury Footer -->
     <footer class="luxury-footer">
         <div class="footer-content">
-            <div class="social-links">
-                <a href="https://www.instagram.com/zeemkhaleem_closet0/" target="_blank">
+            <div class="social-links" itemscope itemtype="https://schema.org/Organization">
+                <link itemprop="url" href="https://zeemkahleemluxury.pxxl.click/">
+                <a href="https://www.instagram.com/zeemkhaleem_closet0/" target="_blank" itemprop="sameAs">
                     <i class="fab fa-instagram"></i>
                 </a>
-                <a href="#">
+                <a href="#" itemprop="sameAs">
                     <i class="fab fa-facebook-f"></i>
                 </a>
-                <a href="https://www.tiktok.com/@zeemkhaleem_closets" target="_blank">
+                <a href="https://www.tiktok.com/@zeemkhaleem_closets" target="_blank" itemprop="sameAs">
                     <i class="fab fa-tiktok"></i>
                 </a>
-                <a href="https://wa.me/2349160935693" target="_blank">
+                <a href="https://wa.me/2349160935693" target="_blank" itemprop="sameAs">
                     <i class="fab fa-whatsapp"></i>
                 </a>
             </div>
@@ -1456,6 +1644,55 @@ foreach ($categories as $category) {
             <div id="modalContent"></div>
         </div>
     </div>
+
+    <!-- Product Structured Data -->
+    <?php if (!empty($structured_products)): ?>
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "ZEEMKAHLEEM LUXURY Products",
+        "description": "Luxury fashion products from ZEEMKAHLEEM LUXURY store",
+        "url": "https://zeemkahleemluxury.pxxl.click/",
+        "numberOfItems": <?= count($structured_products) ?>,
+        "itemListElement": [
+            <?php
+            $product_list = [];
+            foreach (array_slice($structured_products, 0, 10) as $index => $product) {
+                $images = explode(',', $product['images']);
+                $product_list[] = '{
+                    "@type": "ListItem",
+                    "position": ' . ($index + 1) . ',
+                    "item": {
+                        "@type": "Product",
+                        "name": "' . h($product['name']) . '",
+                        "description": "' . h($product['description'] ?: 'Luxury fashion item from ZEEMKAHLEEM LUXURY') . '",
+                        "image": "https://zeemkahleemluxury.pxxl.click/uploads/' . h($images[0]) . '",
+                        "sku": "ZK' . $product['id'] . '",
+                        "brand": {
+                            "@type": "Brand",
+                            "name": "ZEEMKAHLEEM LUXURY"
+                        },
+                        "offers": {
+                            "@type": "Offer",
+                            "url": "https://zeemkahleemluxury.pxxl.click/",
+                            "priceCurrency": "NGN",
+                            "price": "' . $product['price'] . '",
+                            "availability": "https://schema.org/InStock",
+                            "seller": {
+                                "@type": "Organization",
+                                "name": "ZEEMKAHLEEM LUXURY"
+                            }
+                        }
+                    }
+                }';
+            }
+            echo implode(",\n", $product_list);
+            ?>
+        ]
+    }
+    </script>
+    <?php endif; ?>
 
     <script>
         // Theme Management
