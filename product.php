@@ -22,6 +22,7 @@ if (isset($_GET['id'])) {
         echo json_encode($product);
         exit;
     } catch (PDOException $e) {
+        error_log("Product fetch error: " . $e->getMessage());
         http_response_code(500);
         echo json_encode(['error' => 'Database error']);
         exit;
