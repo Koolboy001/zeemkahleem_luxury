@@ -1,11 +1,12 @@
 <?php
 session_start();
 
-// Database configuration
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'zeemkahleem_luxury');
-define('DB_USER', 'root');
-define('DB_PASS', '');
+// Database configuration (update with your actual DB details)
+define('DB_HOST', '127.0.0.1');
+define('DB_PORT', '60845');
+define('DB_NAME', 'zeemkahleem_luxury'); // replace with your actual DB name on pxxl.app
+define('DB_USER', 'your_hosted_db_user'); // replace this
+define('DB_PASS', 'your_hosted_db_password'); // replace this
 define('BUSINESS_WHATSAPP', '2349160935693');
 
 // Session configuration for cart
@@ -21,17 +22,11 @@ define('TEXT_LIGHT', '#f8f9fa');
 define('TEXT_DARK', '#212529');
 
 try {
-    $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME, DB_USER, DB_PASS);
+    // Include port number in DSN
+    $pdo = new PDO("mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    // Create database if it doesn't exist
-    try {
-        $pdo = new PDO("mysql:host=" . DB_HOST, DB_USER, DB_PASS);
-        $pdo->exec("CREATE DATABASE IF NOT EXISTS " . DB_NAME);
-        $pdo->exec("USE " . DB_NAME);
-    } catch (PDOException $e) {
-        die("Database Connection Failed: " . $e->getMessage());
-    }
+    die("Database Connection Failed: " . $e->getMessage());
 }
 
 // Create tables
@@ -68,11 +63,11 @@ foreach ($tables as $table) {
     try {
         $pdo->exec($table);
     } catch (PDOException $e) {
-        // Continue if table already exists
+        // Skip if table already exists
     }
 }
 
-// Create uploads directory
+// Create uploads directory if not exists
 if (!file_exists('uploads')) {
     mkdir('uploads', 0777, true);
 }
@@ -92,7 +87,7 @@ function h($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
 
-// Check if default admin exists and create if not
+// Ensure default admin exists
 try {
     $stmt = $pdo->query("SELECT COUNT(*) FROM admins");
     if ($stmt->fetchColumn() == 0) {
