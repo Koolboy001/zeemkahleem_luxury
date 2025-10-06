@@ -1,12 +1,12 @@
 <?php
 session_start();
 
-// Database configuration (update with your actual DB details)
-define('DB_HOST', 'db.pxxl.pro:10233');
+// Database configuration
+define('DB_HOST', 'db.pxxl.pro');
 define('DB_PORT', '10233');
-define('DB_NAME', 'db_e4a8923c'); // replace with your actual DB name on pxxl.app
-define('DB_USER', 'user_e38b806e'); // replace this
-define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50'); // replace this
+define('DB_NAME', 'db_e4a8923c');
+define('DB_USER', 'user_e38b806e');
+define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50');
 define('BUSINESS_WHATSAPP', '2349160935693');
 
 // Session configuration for cart
@@ -21,29 +21,35 @@ define('ACCENT_COLOR', '#e6c875');
 define('TEXT_LIGHT', '#f8f9fa');
 define('TEXT_DARK', '#212529');
 
+// Error reporting for debugging
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 try {
     // Include port number in DSN
     $pdo = new PDO("mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 } catch (PDOException $e) {
-    die("Database Connection Failed: " . $e->getMessage());
+    error_log("Database Connection Failed: " . $e->getMessage());
+    die("Database Connection Failed. Please check your configuration.");
 }
 
-// Create tables
+// Create tables with better error handling
 $tables = [
     "CREATE TABLE IF NOT EXISTS admins (
         id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )",
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     
     "CREATE TABLE IF NOT EXISTS categories (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         slug VARCHAR(100) UNIQUE NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )",
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
     
     "CREATE TABLE IF NOT EXISTS products (
         id INT AUTO_INCREMENT PRIMARY KEY,
@@ -55,21 +61,25 @@ $tables = [
         images TEXT NOT NULL,
         featured BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
-    )"
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
 ];
 
 foreach ($tables as $table) {
     try {
         $pdo->exec($table);
     } catch (PDOException $e) {
-        // Skip if table already exists
+        error_log("Table creation error: " . $e->getMessage());
+        // Continue execution even if table creation fails
     }
 }
 
 // Create uploads directory if not exists
 if (!file_exists('uploads')) {
-    mkdir('uploads', 0777, true);
+    if (!mkdir('uploads', 0755, true)) {
+        error_log("Failed to create uploads directory");
+    }
 }
 
 // Helper functions
@@ -92,7 +102,8 @@ try {
     $stmt = $pdo->query("SELECT COUNT(*) FROM admins");
     if ($stmt->fetchColumn() == 0) {
         $password = password_hash('admin123', PASSWORD_DEFAULT);
-        $pdo->prepare("INSERT INTO admins (username, password) VALUES (?, ?)")->execute(['admin', $password]);
+        $stmt = $pdo->prepare("INSERT INTO admins (username, password) VALUES (?, ?)");
+        $stmt->execute(['admin', $password]);
         error_log("Default admin created: admin / admin123");
     }
 } catch (PDOException $e) {
