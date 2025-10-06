@@ -195,7 +195,7 @@ if (!empty($search_results)) {
     <meta property="og:url" content="https://zeemkahleemluxury.pxxl.click/">
     <meta property="og:title" content="ZEEMKAHLEEM LUXURY - Premium Fashion Store">
     <meta property="og:description" content="Discover exclusive luxury fashion collections at ZEEMKAHLEEM LUXURY. Premium clothing, designer outfits, and sophisticated style for the modern individual.">
-    <meta property="og:image" content="https://zeemkahleemluxury.pxxl.click/uploads/zeemkahleem-luxury-banner.jpg">
+    <meta property="og:image" content="https://zeemkahleemluxury.pxxl.click/logo.jpeg">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="ZEEMKAHLEEM LUXURY">
@@ -205,7 +205,7 @@ if (!empty($search_results)) {
     <meta property="twitter:url" content="https://zeemkahleemluxury.pxxl.click/">
     <meta property="twitter:title" content="ZEEMKAHLEEM LUXURY - Premium Fashion Store">
     <meta property="twitter:description" content="Discover exclusive luxury fashion collections at ZEEMKAHLEEM LUXURY. Premium clothing and designer outfits.">
-    <meta property="twitter:image" content="https://zeemkahleemluxury.pxxl.click/uploads/zeemkahleem-luxury-banner.jpg">
+    <meta property="twitter:image" content="https://zeemkahleemluxury.pxxl.click/uploads/logo.jpeg">
     
     <!-- Canonical URL -->
     <link rel="canonical" href="https://zeemkahleemluxury.pxxl.click/">
@@ -231,7 +231,7 @@ if (!empty($search_results)) {
         "description": "Premium luxury fashion store offering exclusive clothing collections and designer outfits",
         "url": "https://zeemkahleemluxury.pxxl.click/",
         "logo": "https://zeemkahleemluxury.pxxl.click/uploads/zeemkahleem-logo.jpg",
-        "telephone": "+2349160935693",
+        "telephone": "+2348090654610",
         "email": "info@zeemkahleemluxury.com",
         "address": {
             "@type": "PostalAddress",
@@ -1628,7 +1628,7 @@ if (!empty($search_results)) {
                 <a href="https://www.tiktok.com/@zeemkhaleem_closets" target="_blank" itemprop="sameAs">
                     <i class="fab fa-tiktok"></i>
                 </a>
-                <a href="https://wa.me/2349160935693" target="_blank" itemprop="sameAs">
+                <a href="https://wa.me/2348090654610" target="_blank" itemprop="sameAs">
                     <i class="fab fa-whatsapp"></i>
                 </a>
             </div>
