@@ -64,6 +64,7 @@ if ($is_logged_in) {
                 }
             } catch (PDOException $e) {
                 $error = "Error adding category: " . $e->getMessage();
+                error_log("Category add error: " . $e->getMessage());
             }
         } else {
             $error = "Category name cannot be empty";
@@ -144,13 +145,19 @@ if ($is_logged_in) {
                             
                             if (move_uploaded_file($main_file['tmp_name'], $upload_path)) {
                                 $images[] = $new_filename;
+                            } else {
+                                $error = "Failed to upload main image. Check directory permissions.";
                             }
+                        } else {
+                            $error = "Invalid file type for main image. Allowed: jpg, jpeg, png, gif, webp";
                         }
+                    } else {
+                        $error = "Main image upload error: " . $main_file['error'];
                     }
                 }
                 
-                // Handle additional images upload
-                if (!empty($_FILES['additional_images']['name'][0])) {
+                // Handle additional images upload only if no error so far
+                if (empty($error) && !empty($_FILES['additional_images']['name'][0])) {
                     foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
                         if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
                             $file_name = $_FILES['additional_images']['name'][$key];
@@ -169,9 +176,11 @@ if ($is_logged_in) {
                     }
                 }
                 
-                if (empty($images)) {
+                if (empty($images) && empty($error)) {
                     $error = "Please upload at least the main product image";
-                } else {
+                }
+                
+                if (empty($error)) {
                     $images_str = implode(',', $images);
                     $stmt = $pdo->prepare("INSERT INTO products (category_id, name, slug, description, price, images) VALUES (?, ?, ?, ?, ?, ?)");
                     $stmt->execute([$category_id, $name, $slug, $description, $price, $images_str]);
@@ -179,6 +188,7 @@ if ($is_logged_in) {
                 }
             } catch (PDOException $e) {
                 $error = "Error adding product: " . $e->getMessage();
+                error_log("Product add error: " . $e->getMessage());
             }
         } else {
             $error = "Please fill all required fields with valid data";
@@ -217,7 +227,7 @@ if ($is_logged_in) {
                                     // Delete old main image
                                     $old_main_image = $images[0];
                                     if (file_exists('uploads/' . $old_main_image)) {
-                                        unlink('uploads/' . $old_main_image);
+                                        @unlink('uploads/' . $old_main_image);
                                     }
                                     $images[0] = $new_filename;
                                 } else {
@@ -258,6 +268,7 @@ if ($is_logged_in) {
                 }
             } catch (PDOException $e) {
                 $error = "Error updating product: " . $e->getMessage();
+                error_log("Product update error: " . $e->getMessage());
             }
         } else {
             $error = "Please fill all required fields with valid data";
@@ -279,7 +290,7 @@ if ($is_logged_in) {
                 // Delete image files
                 foreach ($images as $image) {
                     if (file_exists('uploads/' . $image)) {
-                        unlink('uploads/' . $image);
+                        @unlink('uploads/' . $image);
                     }
                 }
                 
