@@ -51,7 +51,7 @@ if ($is_logged_in) {
         
         if (!empty($name)) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 // Check if category already exists
                 $checkStmt = $pdo->prepare("SELECT id FROM categories WHERE name = ? OR slug = ?");
                 $checkStmt->execute([$name, $slug]);
@@ -78,7 +78,7 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 // Check if category already exists (excluding current category)
                 $checkStmt = $pdo->prepare("SELECT id FROM categories WHERE (name = ? OR slug = ?) AND id != ?");
                 $checkStmt->execute([$name, $slug, $category_id]);
@@ -128,7 +128,7 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 $images = [];
                 
                 // Handle main image upload
@@ -206,7 +206,7 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0 && $product_id > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 $images = is_array($existing_images) ? $existing_images : [];
                 
                 // Handle new main image upload
