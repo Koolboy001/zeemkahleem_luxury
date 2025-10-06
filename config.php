@@ -6,8 +6,8 @@ define('DB_HOST', 'db.pxxl.pro:10233');
 define('DB_PORT', '10233');
 define('DB_NAME', 'db_e4a8923c'); // replace with your actual DB name on pxxl.app
 define('DB_USER', 'user_e38b806e'); // replace this
-define('DB_PASS', 'your_hosted_db_password'); // replace this
-define('BUSINESS_WHATSAPP', 'e8334ec01a6d8bd8557ef57e5abfff50');
+define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50'); // replace this
+define('BUSINESS_WHATSAPP', '2349160935693');
 
 // Session configuration for cart
 if (!isset($_SESSION['cart'])) {
