@@ -25,13 +25,6 @@ define('TEXT_DARK', '#212529');
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-// Increase PHP limits for file uploads (100MB)
-@ini_set('upload_max_filesize', '100M');
-@ini_set('post_max_size', '100M');
-@ini_set('memory_limit', '256M');
-@ini_set('max_execution_time', '300');
-@ini_set('max_input_time', '300');
-
 try {
     // Include port number in DSN
     $pdo = new PDO("mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);
@@ -91,10 +84,36 @@ if (!file_exists('uploads')) {
 
 // Helper functions
 function slugify($text) {
-    // Convert to lowercase
-    $text = strtolower(trim($text));
+    // Replace non-letter or digits by -
+    $text = preg_replace('~[^\pL\d]+~u', '-', $text);
     
-    // Replace spaces and non-alphanumeric characters with hyphens
+    // Check if iconv is available, if not use a fallback
+    if (function_exists('iconv')) {
+        $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
+    } else {
+        // Fallback: remove non-ASCII characters
+        $text = preg_replace('/[^\x00-\x7F]/', '', $text);
+    }
+    
+    // Remove unwanted characters
+    $text = preg_replace('~[^-\w]+~', '', $text);
+    $text = trim($text, '-');
+    $text = preg_replace('~-+~', '-', $text);
+    $text = strtolower($text);
+    
+    if (empty($text)) {
+        return 'n-a';
+    }
+    
+    return $text;
+}
+
+// Alternative slugify function without iconv dependency
+function simple_slugify($text) {
+    // Convert to lowercase
+    $text = strtolower($text);
+    
+    // Replace non-alphanumeric characters with hyphens
     $text = preg_replace('/[^a-z0-9]+/', '-', $text);
     
     // Trim hyphens from both ends
@@ -112,42 +131,6 @@ function slugify($text) {
 
 function h($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
-}
-
-// Upload limit checking function
-function check_upload_limits() {
-    $max_upload = ini_get('upload_max_filesize');
-    $max_post = ini_get('post_max_size');
-    $memory_limit = ini_get('memory_limit');
-    
-    error_log("Upload limits - Max Upload: $max_upload, Max Post: $max_post, Memory: $memory_limit");
-    
-    // Convert to bytes for comparison
-    function to_bytes($value) {
-        $unit = strtolower(substr($value, -1));
-        $number = (int)$value;
-        switch($unit) {
-            case 'g':
-                return $number * 1024 * 1024 * 1024;
-            case 'm':
-                return $number * 1024 * 1024;
-            case 'k':
-                return $number * 1024;
-            default:
-                return $number;
-        }
-    }
-    
-    $upload_bytes = to_bytes($max_upload);
-    $post_bytes = to_bytes($max_post);
-    $required_bytes = 100 * 1024 * 1024; // 100MB
-    
-    // Check if current limits are sufficient
-    if ($upload_bytes < $required_bytes || $post_bytes < $required_bytes) {
-        return "Current upload limit is $max_upload. For 100MB uploads, increase to at least 100MB in your server configuration.";
-    }
-    
-    return null;
 }
 
 // Ensure default admin exists
