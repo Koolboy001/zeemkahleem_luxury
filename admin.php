@@ -4,12 +4,6 @@ require 'config.php';
 $error = '';
 $message = '';
 
-// Check upload limits and show warning if needed
-$upload_warning = check_upload_limits();
-if ($upload_warning) {
-    $error = $upload_warning;
-}
-
 // Handle logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['admin_id']);
@@ -57,7 +51,7 @@ if ($is_logged_in) {
         
         if (!empty($name)) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 // Check if category already exists
                 $checkStmt = $pdo->prepare("SELECT id FROM categories WHERE name = ? OR slug = ?");
                 $checkStmt->execute([$name, $slug]);
@@ -84,7 +78,7 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 // Check if category already exists (excluding current category)
                 $checkStmt = $pdo->prepare("SELECT id FROM categories WHERE (name = ? OR slug = ?) AND id != ?");
                 $checkStmt->execute([$name, $slug, $category_id]);
@@ -134,49 +128,60 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 $images = [];
                 
-                // Handle main image upload
+                // Handle main image upload with enhanced validation
                 if (!empty($_FILES['main_image']['name'])) {
                     $main_file = $_FILES['main_image'];
-                    if ($main_file['error'] === UPLOAD_ERR_OK) {
+                    $upload_errors = validateUploadedFile($main_file, true);
+                    
+                    if (empty($upload_errors)) {
                         $file_name = $main_file['name'];
                         $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                        $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
                         
-                        if (in_array($file_ext, $allowed_ext)) {
-                            $new_filename = uniqid('main_') . '.' . $file_ext;
-                            $upload_path = 'uploads/' . $new_filename;
-                            
-                            if (move_uploaded_file($main_file['tmp_name'], $upload_path)) {
-                                $images[] = $new_filename;
-                            } else {
-                                $error = "Failed to upload main image. Check directory permissions.";
-                            }
+                        $new_filename = uniqid('main_') . '.' . $file_ext;
+                        $upload_path = 'uploads/' . $new_filename;
+                        
+                        if (move_uploaded_file($main_file['tmp_name'], $upload_path)) {
+                            $images[] = $new_filename;
                         } else {
-                            $error = "Invalid file type for main image. Allowed: jpg, jpeg, png, gif, webp";
+                            $error = "Failed to upload main image. Check directory permissions.";
                         }
                     } else {
-                        $error = "Main image upload error: " . $main_file['error'];
+                        $error = implode(', ', $upload_errors);
                     }
+                } else {
+                    $error = "Main product image is required";
                 }
                 
                 // Handle additional images upload only if no error so far
                 if (empty($error) && !empty($_FILES['additional_images']['name'][0])) {
                     foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
                         if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
-                            $file_name = $_FILES['additional_images']['name'][$key];
-                            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                            $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                            $additional_file = [
+                                'name' => $_FILES['additional_images']['name'][$key],
+                                'type' => $_FILES['additional_images']['type'][$key],
+                                'tmp_name' => $tmp_name,
+                                'error' => $_FILES['additional_images']['error'][$key],
+                                'size' => $_FILES['additional_images']['size'][$key]
+                            ];
                             
-                            if (in_array($file_ext, $allowed_ext)) {
+                            $upload_errors = validateUploadedFile($additional_file);
+                            
+                            if (empty($upload_errors)) {
+                                $file_name = $additional_file['name'];
+                                $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                                
                                 $new_filename = uniqid('add_') . '.' . $file_ext;
                                 $upload_path = 'uploads/' . $new_filename;
                                 
                                 if (move_uploaded_file($tmp_name, $upload_path)) {
                                     $images[] = $new_filename;
                                 }
+                            } else {
+                                // Log additional image errors but don't stop the process
+                                error_log("Additional image upload error: " . implode(', ', $upload_errors));
                             }
                         }
                     }
@@ -212,53 +217,67 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0 && $product_id > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 $images = is_array($existing_images) ? $existing_images : [];
                 
                 // Handle new main image upload
                 if (!empty($_FILES['main_image']['name'])) {
                     $main_file = $_FILES['main_image'];
-                    if ($main_file['error'] === UPLOAD_ERR_OK) {
+                    $upload_errors = validateUploadedFile($main_file, false);
+                    
+                    if (empty($upload_errors)) {
                         $file_name = $main_file['name'];
                         $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                        $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
                         
-                        if (in_array($file_ext, $allowed_ext)) {
-                            $new_filename = uniqid('main_') . '.' . $file_ext;
-                            $upload_path = 'uploads/' . $new_filename;
-                            
-                            if (move_uploaded_file($main_file['tmp_name'], $upload_path)) {
-                                // Replace the first image (main image)
-                                if (!empty($images)) {
-                                    // Delete old main image
-                                    $old_main_image = $images[0];
-                                    if (file_exists('uploads/' . $old_main_image)) {
-                                        @unlink('uploads/' . $old_main_image);
-                                    }
-                                    $images[0] = $new_filename;
-                                } else {
-                                    $images[] = $new_filename;
+                        $new_filename = uniqid('main_') . '.' . $file_ext;
+                        $upload_path = 'uploads/' . $new_filename;
+                        
+                        if (move_uploaded_file($main_file['tmp_name'], $upload_path)) {
+                            // Replace the first image (main image)
+                            if (!empty($images)) {
+                                // Delete old main image
+                                $old_main_image = $images[0];
+                                if (file_exists('uploads/' . $old_main_image)) {
+                                    @unlink('uploads/' . $old_main_image);
                                 }
+                                $images[0] = $new_filename;
+                            } else {
+                                $images[] = $new_filename;
                             }
+                        } else {
+                            $error = "Failed to upload new main image";
                         }
+                    } else {
+                        $error = implode(', ', $upload_errors);
                     }
                 }
                 
                 // Handle new additional images upload
-                if (!empty($_FILES['additional_images']['name'][0])) {
+                if (empty($error) && !empty($_FILES['additional_images']['name'][0])) {
                     foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
                         if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
-                            $file_name = $_FILES['additional_images']['name'][$key];
-                            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                            $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                            $additional_file = [
+                                'name' => $_FILES['additional_images']['name'][$key],
+                                'type' => $_FILES['additional_images']['type'][$key],
+                                'tmp_name' => $tmp_name,
+                                'error' => $_FILES['additional_images']['error'][$key],
+                                'size' => $_FILES['additional_images']['size'][$key]
+                            ];
                             
-                            if (in_array($file_ext, $allowed_ext)) {
+                            $upload_errors = validateUploadedFile($additional_file);
+                            
+                            if (empty($upload_errors)) {
+                                $file_name = $additional_file['name'];
+                                $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                                
                                 $new_filename = uniqid('add_') . '.' . $file_ext;
                                 $upload_path = 'uploads/' . $new_filename;
                                 
                                 if (move_uploaded_file($tmp_name, $upload_path)) {
                                     $images[] = $new_filename;
                                 }
+                            } else {
+                                error_log("Additional image upload error: " . implode(', ', $upload_errors));
                             }
                         }
                     }
@@ -943,16 +962,16 @@ if ($is_logged_in) {
                     <!-- Main Product Image -->
                     <div class="form-group">
                         <label class="form-label">Main Product Image <span style="color: var(--accent)">*</span></label>
-                        <input type="file" name="main_image" class="form-file" accept="image/*" required onchange="previewMainImage(this); validateFileSize(this, 100)">
-                        <div class="file-hint">This will be the primary image displayed for the product (Max: 100MB)</div>
+                        <input type="file" name="main_image" class="form-file" accept="image/*" required onchange="previewMainImage(this)">
+                        <div class="file-hint">Maximum file size: 30MB. Allowed formats: JPG, JPEG, PNG, GIF, WEBP</div>
                         <div class="image-preview" id="mainImagePreview"></div>
                     </div>
                     
                     <!-- Additional Product Images -->
                     <div class="form-group">
                         <label class="form-label">Additional Product Images</label>
-                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewAdditionalImages(this); validateMultipleFiles(this, 100)">
-                        <div class="file-hint">You can select multiple images to show different angles of the product (Max: 100MB per file)</div>
+                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewAdditionalImages(this)">
+                        <div class="file-hint">Maximum file size: 30MB per image. Allowed formats: JPG, JPEG, PNG, GIF, WEBP</div>
                         <div class="image-preview" id="additionalImagesPreview"></div>
                     </div>
                     
@@ -1050,22 +1069,22 @@ if ($is_logged_in) {
                     <div class="form-group">
                         <label class="form-label">Current Images</label>
                         <div class="image-preview" id="editCurrentImagesPreview"></div>
-                        <div class="file-hint">Click the X button to remove an image</div>
+                        <div class="file-hint">Click the X button to remove an image. Product must have at least one image.</div>
                     </div>
 
                     <!-- New Main Product Image -->
                     <div class="form-group">
                         <label class="form-label">Change Main Product Image</label>
-                        <input type="file" name="main_image" class="form-file" accept="image/*" onchange="previewEditMainImage(this); validateFileSize(this, 100)">
-                        <div class="file-hint">Upload a new image to replace the current main image (Max: 100MB)</div>
+                        <input type="file" name="main_image" class="form-file" accept="image/*" onchange="previewEditMainImage(this)">
+                        <div class="file-hint">Maximum file size: 30MB. Allowed formats: JPG, JPEG, PNG, GIF, WEBP</div>
                         <div class="image-preview" id="editMainImagePreview"></div>
                     </div>
                     
                     <!-- New Additional Product Images -->
                     <div class="form-group">
                         <label class="form-label">Add More Product Images</label>
-                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewEditAdditionalImages(this); validateMultipleFiles(this, 100)">
-                        <div class="file-hint">You can select multiple images to add to the product (Max: 100MB per file)</div>
+                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewEditAdditionalImages(this)">
+                        <div class="file-hint">Maximum file size: 30MB per image. Allowed formats: JPG, JPEG, PNG, GIF, WEBP</div>
                         <div class="image-preview" id="editAdditionalImagesPreview"></div>
                     </div>
                     
@@ -1124,33 +1143,6 @@ if ($is_logged_in) {
                 }
             }
 
-            // File size validation functions
-            function validateFileSize(input, maxSizeMB = 100) {
-                if (input.files && input.files[0]) {
-                    const fileSize = input.files[0].size / 1024 / 1024; // in MB
-                    if (fileSize > maxSizeMB) {
-                        alert(`File size must be less than ${maxSizeMB}MB. Your file is ${fileSize.toFixed(2)}MB.`);
-                        input.value = ''; // clear the input
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            function validateMultipleFiles(input, maxSizeMB = 100) {
-                if (input.files) {
-                    for (let i = 0; i < input.files.length; i++) {
-                        const fileSize = input.files[i].size / 1024 / 1024;
-                        if (fileSize > maxSizeMB) {
-                            alert(`File "${input.files[i].name}" is too large (${fileSize.toFixed(2)}MB). Maximum size is ${maxSizeMB}MB.`);
-                            input.value = '';
-                            break;
-                        }
-                    }
-                }
-                return true;
-            }
-
             // Edit Product Modal Functions
             let currentProductImages = [];
 
@@ -1167,7 +1159,7 @@ if ($is_logged_in) {
                     document.getElementById('edit_product_description').value = product.description || '';
                     
                     // Handle images
-                    currentProductImages = product.images || [];
+                    currentProductImages = product.images ? product.images.split(',') : [];
                     displayCurrentImages(currentProductImages);
                     
                     // Show modal
@@ -1268,6 +1260,9 @@ if ($is_logged_in) {
             // Handle edit product form submission
             document.getElementById('editProductForm').addEventListener('submit', function(e) {
                 // Add current images as hidden inputs
+                const existingInputs = this.querySelectorAll('input[name="existing_images[]"]');
+                existingInputs.forEach(input => input.remove());
+                
                 currentProductImages.forEach(image => {
                     const input = document.createElement('input');
                     input.type = 'hidden';
@@ -1289,6 +1284,58 @@ if ($is_logged_in) {
                     closeEditProductModal();
                 }
             }
+
+            // File size validation before upload
+            document.getElementById('productForm').addEventListener('submit', function(e) {
+                const mainImage = this.querySelector('input[name="main_image"]');
+                const additionalImages = this.querySelectorAll('input[name="additional_images[]"]');
+                
+                // Check main image
+                if (mainImage.files[0]) {
+                    if (mainImage.files[0].size > <?= MAX_FILE_SIZE ?>) {
+                        e.preventDefault();
+                        alert('Main image is too large. Maximum size is 30MB.');
+                        return false;
+                    }
+                }
+                
+                // Check additional images
+                if (additionalImages[0].files) {
+                    for (let file of additionalImages[0].files) {
+                        if (file.size > <?= MAX_FILE_SIZE ?>) {
+                            e.preventDefault();
+                            alert(`File "${file.name}" is too large. Maximum size is 30MB per image.`);
+                            return false;
+                        }
+                    }
+                }
+            });
+
+            // Similar validation for edit form
+            document.getElementById('editProductForm').addEventListener('submit', function(e) {
+                const mainImage = this.querySelector('input[name="main_image"]');
+                const additionalImages = this.querySelectorAll('input[name="additional_images[]"]');
+                
+                // Check main image
+                if (mainImage.files[0]) {
+                    if (mainImage.files[0].size > <?= MAX_FILE_SIZE ?>) {
+                        e.preventDefault();
+                        alert('Main image is too large. Maximum size is 30MB.');
+                        return false;
+                    }
+                }
+                
+                // Check additional images
+                if (additionalImages[0].files) {
+                    for (let file of additionalImages[0].files) {
+                        if (file.size > <?= MAX_FILE_SIZE ?>) {
+                            e.preventDefault();
+                            alert(`File "${file.name}" is too large. Maximum size is 30MB per image.`);
+                            return false;
+                        }
+                    }
+                }
+            });
         </script>
     <?php endif; ?>
 </body>
