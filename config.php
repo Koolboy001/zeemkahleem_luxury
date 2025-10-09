@@ -144,7 +144,7 @@ function h($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
 
-// File upload validation function
+// Fixed file upload validation function without finfo dependency
 function validateUploadedFile($file, $isMain = false) {
     $errors = [];
     
@@ -189,27 +189,28 @@ function validateUploadedFile($file, $isMain = false) {
         $errors[] = "File size exceeds 30MB limit";
     }
     
-    // Check file type
+    if ($file['size'] == 0) {
+        $errors[] = "File is empty";
+    }
+    
+    // Check file type by extension
     $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     if (!in_array($file_ext, ALLOWED_IMAGE_TYPES)) {
         $errors[] = "Invalid file type. Allowed: jpg, jpeg, png, gif, webp";
     }
     
-    // Additional security check: MIME type
-    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-    $mime_type = finfo_file($finfo, $file['tmp_name']);
-    finfo_close($finfo);
-    
-    $allowed_mimes = [
-        'image/jpeg',
-        'image/jpg', 
-        'image/png',
-        'image/gif',
-        'image/webp'
-    ];
-    
-    if (!in_array($mime_type, $allowed_mimes)) {
-        $errors[] = "Invalid file format detected";
+    // Basic security check - check if file is actually an image using getimagesize
+    if (!empty($file['tmp_name']) && file_exists($file['tmp_name'])) {
+        $image_info = @getimagesize($file['tmp_name']);
+        if (!$image_info) {
+            $errors[] = "File is not a valid image";
+        } else {
+            // Check if the MIME type matches allowed image types
+            $allowed_mimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+            if (!in_array($image_info['mime'], $allowed_mimes)) {
+                $errors[] = "Invalid image format";
+            }
+        }
     }
     
     return $errors;
