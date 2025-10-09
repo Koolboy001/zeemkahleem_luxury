@@ -4,12 +4,6 @@ require 'config.php';
 $error = '';
 $message = '';
 
-// Check upload limits and show warning if needed
-$upload_warning = check_upload_limits();
-if ($upload_warning) {
-    $error = $upload_warning;
-}
-
 // Handle logout
 if (isset($_GET['logout'])) {
     unset($_SESSION['admin_id']);
@@ -57,7 +51,7 @@ if ($is_logged_in) {
         
         if (!empty($name)) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 // Check if category already exists
                 $checkStmt = $pdo->prepare("SELECT id FROM categories WHERE name = ? OR slug = ?");
                 $checkStmt->execute([$name, $slug]);
@@ -84,7 +78,7 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 // Check if category already exists (excluding current category)
                 $checkStmt = $pdo->prepare("SELECT id FROM categories WHERE (name = ? OR slug = ?) AND id != ?");
                 $checkStmt->execute([$name, $slug, $category_id]);
@@ -134,7 +128,7 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 $images = [];
                 
                 // Handle main image upload
@@ -212,7 +206,7 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0 && $product_id > 0) {
             try {
-                $slug = slugify($name);
+                $slug = simple_slugify($name);
                 $images = is_array($existing_images) ? $existing_images : [];
                 
                 // Handle new main image upload
@@ -943,16 +937,16 @@ if ($is_logged_in) {
                     <!-- Main Product Image -->
                     <div class="form-group">
                         <label class="form-label">Main Product Image <span style="color: var(--accent)">*</span></label>
-                        <input type="file" name="main_image" class="form-file" accept="image/*" required onchange="previewMainImage(this); validateFileSize(this, 100)">
-                        <div class="file-hint">This will be the primary image displayed for the product (Max: 100MB)</div>
+                        <input type="file" name="main_image" class="form-file" accept="image/*" required onchange="previewMainImage(this)">
+                        <div class="file-hint">This will be the primary image displayed for the product</div>
                         <div class="image-preview" id="mainImagePreview"></div>
                     </div>
                     
                     <!-- Additional Product Images -->
                     <div class="form-group">
                         <label class="form-label">Additional Product Images</label>
-                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewAdditionalImages(this); validateMultipleFiles(this, 100)">
-                        <div class="file-hint">You can select multiple images to show different angles of the product (Max: 100MB per file)</div>
+                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewAdditionalImages(this)">
+                        <div class="file-hint">You can select multiple images to show different angles of the product</div>
                         <div class="image-preview" id="additionalImagesPreview"></div>
                     </div>
                     
@@ -1056,16 +1050,16 @@ if ($is_logged_in) {
                     <!-- New Main Product Image -->
                     <div class="form-group">
                         <label class="form-label">Change Main Product Image</label>
-                        <input type="file" name="main_image" class="form-file" accept="image/*" onchange="previewEditMainImage(this); validateFileSize(this, 100)">
-                        <div class="file-hint">Upload a new image to replace the current main image (Max: 100MB)</div>
+                        <input type="file" name="main_image" class="form-file" accept="image/*" onchange="previewEditMainImage(this)">
+                        <div class="file-hint">Upload a new image to replace the current main image</div>
                         <div class="image-preview" id="editMainImagePreview"></div>
                     </div>
                     
                     <!-- New Additional Product Images -->
                     <div class="form-group">
                         <label class="form-label">Add More Product Images</label>
-                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewEditAdditionalImages(this); validateMultipleFiles(this, 100)">
-                        <div class="file-hint">You can select multiple images to add to the product (Max: 100MB per file)</div>
+                        <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewEditAdditionalImages(this)">
+                        <div class="file-hint">You can select multiple images to add to the product</div>
                         <div class="image-preview" id="editAdditionalImagesPreview"></div>
                     </div>
                     
@@ -1122,33 +1116,6 @@ if ($is_logged_in) {
                         reader.readAsDataURL(input.files[i]);
                     }
                 }
-            }
-
-            // File size validation functions
-            function validateFileSize(input, maxSizeMB = 100) {
-                if (input.files && input.files[0]) {
-                    const fileSize = input.files[0].size / 1024 / 1024; // in MB
-                    if (fileSize > maxSizeMB) {
-                        alert(`File size must be less than ${maxSizeMB}MB. Your file is ${fileSize.toFixed(2)}MB.`);
-                        input.value = ''; // clear the input
-                        return false;
-                    }
-                }
-                return true;
-            }
-
-            function validateMultipleFiles(input, maxSizeMB = 100) {
-                if (input.files) {
-                    for (let i = 0; i < input.files.length; i++) {
-                        const fileSize = input.files[i].size / 1024 / 1024;
-                        if (fileSize > maxSizeMB) {
-                            alert(`File "${input.files[i].name}" is too large (${fileSize.toFixed(2)}MB). Maximum size is ${maxSizeMB}MB.`);
-                            input.value = '';
-                            break;
-                        }
-                    }
-                }
-                return true;
             }
 
             // Edit Product Modal Functions
