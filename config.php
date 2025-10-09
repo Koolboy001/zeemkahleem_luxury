@@ -1,13 +1,6 @@
 <?php
 session_start();
 
-// Increase upload limits to 30MB
-ini_set('upload_max_filesize', '30M');
-ini_set('post_max_size', '35M'); // Slightly larger than upload_max_filesize to account for form data
-ini_set('max_execution_time', 300);
-ini_set('max_input_time', 300);
-ini_set('memory_limit', '256M');
-
 // Database configuration
 define('DB_HOST', 'db.pxxl.pro');
 define('DB_PORT', '10233');
@@ -15,10 +8,6 @@ define('DB_NAME', 'db_e4a8923c');
 define('DB_USER', 'user_e38b806e');
 define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50');
 define('BUSINESS_WHATSAPP', '2349160935693');
-
-// File upload configuration
-define('MAX_FILE_SIZE', 30 * 1024 * 1024); // 30MB in bytes
-define('ALLOWED_IMAGE_TYPES', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
 
 // Session configuration for cart
 if (!isset($_SESSION['cart'])) {
@@ -35,6 +24,13 @@ define('TEXT_DARK', '#212529');
 // Error reporting for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
+
+// Increase PHP limits for file uploads (100MB)
+@ini_set('upload_max_filesize', '100M');
+@ini_set('post_max_size', '100M');
+@ini_set('memory_limit', '256M');
+@ini_set('max_execution_time', '300');
+@ini_set('max_input_time', '300');
 
 try {
     // Include port number in DSN
@@ -95,36 +91,10 @@ if (!file_exists('uploads')) {
 
 // Helper functions
 function slugify($text) {
-    // Replace non-letter or digits by -
-    $text = preg_replace('~[^\pL\d]+~u', '-', $text);
-    
-    // Check if iconv is available, if not use a fallback
-    if (function_exists('iconv')) {
-        $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
-    } else {
-        // Fallback: remove non-ASCII characters
-        $text = preg_replace('/[^\x00-\x7F]/', '', $text);
-    }
-    
-    // Remove unwanted characters
-    $text = preg_replace('~[^-\w]+~', '', $text);
-    $text = trim($text, '-');
-    $text = preg_replace('~-+~', '-', $text);
-    $text = strtolower($text);
-    
-    if (empty($text)) {
-        return 'n-a';
-    }
-    
-    return $text;
-}
-
-// Alternative slugify function without iconv dependency
-function simple_slugify($text) {
     // Convert to lowercase
-    $text = strtolower($text);
+    $text = strtolower(trim($text));
     
-    // Replace non-alphanumeric characters with hyphens
+    // Replace spaces and non-alphanumeric characters with hyphens
     $text = preg_replace('/[^a-z0-9]+/', '-', $text);
     
     // Trim hyphens from both ends
@@ -144,76 +114,40 @@ function h($string) {
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
 
-// Fixed file upload validation function without finfo dependency
-function validateUploadedFile($file, $isMain = false) {
-    $errors = [];
+// Upload limit checking function
+function check_upload_limits() {
+    $max_upload = ini_get('upload_max_filesize');
+    $max_post = ini_get('post_max_size');
+    $memory_limit = ini_get('memory_limit');
     
-    // Check if file was uploaded
-    if ($file['error'] === UPLOAD_ERR_NO_FILE) {
-        if ($isMain) {
-            $errors[] = "Main image is required";
-        }
-        return $errors;
-    }
+    error_log("Upload limits - Max Upload: $max_upload, Max Post: $max_post, Memory: $memory_limit");
     
-    // Check for upload errors
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        switch ($file['error']) {
-            case UPLOAD_ERR_INI_SIZE:
-            case UPLOAD_ERR_FORM_SIZE:
-                $errors[] = "File is too large. Maximum size is 30MB";
-                break;
-            case UPLOAD_ERR_PARTIAL:
-                $errors[] = "File was only partially uploaded";
-                break;
-            case UPLOAD_ERR_NO_FILE:
-                $errors[] = "No file was uploaded";
-                break;
-            case UPLOAD_ERR_NO_TMP_DIR:
-                $errors[] = "Missing temporary folder";
-                break;
-            case UPLOAD_ERR_CANT_WRITE:
-                $errors[] = "Failed to write file to disk";
-                break;
-            case UPLOAD_ERR_EXTENSION:
-                $errors[] = "A PHP extension stopped the file upload";
-                break;
+    // Convert to bytes for comparison
+    function to_bytes($value) {
+        $unit = strtolower(substr($value, -1));
+        $number = (int)$value;
+        switch($unit) {
+            case 'g':
+                return $number * 1024 * 1024 * 1024;
+            case 'm':
+                return $number * 1024 * 1024;
+            case 'k':
+                return $number * 1024;
             default:
-                $errors[] = "Unknown upload error";
-        }
-        return $errors;
-    }
-    
-    // Check file size
-    if ($file['size'] > MAX_FILE_SIZE) {
-        $errors[] = "File size exceeds 30MB limit";
-    }
-    
-    if ($file['size'] == 0) {
-        $errors[] = "File is empty";
-    }
-    
-    // Check file type by extension
-    $file_ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    if (!in_array($file_ext, ALLOWED_IMAGE_TYPES)) {
-        $errors[] = "Invalid file type. Allowed: jpg, jpeg, png, gif, webp";
-    }
-    
-    // Basic security check - check if file is actually an image using getimagesize
-    if (!empty($file['tmp_name']) && file_exists($file['tmp_name'])) {
-        $image_info = @getimagesize($file['tmp_name']);
-        if (!$image_info) {
-            $errors[] = "File is not a valid image";
-        } else {
-            // Check if the MIME type matches allowed image types
-            $allowed_mimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            if (!in_array($image_info['mime'], $allowed_mimes)) {
-                $errors[] = "Invalid image format";
-            }
+                return $number;
         }
     }
     
-    return $errors;
+    $upload_bytes = to_bytes($max_upload);
+    $post_bytes = to_bytes($max_post);
+    $required_bytes = 100 * 1024 * 1024; // 100MB
+    
+    // Check if current limits are sufficient
+    if ($upload_bytes < $required_bytes || $post_bytes < $required_bytes) {
+        return "Current upload limit is $max_upload. For 100MB uploads, increase to at least 100MB in your server configuration.";
+    }
+    
+    return null;
 }
 
 // Ensure default admin exists
