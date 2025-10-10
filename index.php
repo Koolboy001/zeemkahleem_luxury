@@ -165,50 +165,56 @@ if (!empty($search_results)) {
         $structured_products = array_merge($structured_products, $category_products_array);
     }
 }
+
+// Dynamic page titles and descriptions
+if (!empty($search)) {
+    $page_title = "Search: " . h($search) . " - ZEEMKAHLEEM LUXURY Fashion Store";
+    $page_description = "Search results for '" . h($search) . "' at ZEEMKAHLEEM LUXURY - Premium fashion store offering exclusive luxury clothing and designer outfits.";
+} elseif ($cat_filter > 0 && $current_category) {
+    $page_title = h($current_category['name']) . " - ZEEMKAHLEEM LUXURY Premium Fashion Collection";
+    $page_description = "Explore our " . h($current_category['name']) . " collection at ZEEMKAHLEEM LUXURY. Premium luxury fashion items for the sophisticated individual.";
+} else {
+    $page_title = "ZEEMKAHLEEM LUXURY - Premium Fashion Store | Luxury Clothing & Style";
+    $page_description = "ZEEMKAHLEEM LUXURY - Premium fashion store offering exclusive luxury clothing, designer outfits, and sophisticated style. Shop the latest collections and elevate your fashion game.";
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Basic SEO -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- Primary Meta Tags -->
-    <title>
-        <?php 
-        if (!empty($search)) {
-            echo "Search: " . h($search) . " - ZEEMKAHLEEM LUXURY Fashion Store";
-        } elseif ($cat_filter > 0 && $current_category) {
-            echo h($current_category['name']) . " - ZEEMKAHLEEM LUXURY Premium Fashion";
-        } else {
-            echo "ZEEMKAHLEEM LUXURY - Premium Fashion Store | Luxury Clothing & Style";
-        }
-        ?>
-    </title>
-    
-    <meta name="description" content="ZEEMKAHLEEM LUXURY - Premium fashion store offering exclusive luxury clothing, designer outfits, and sophisticated style. Shop the latest collections and elevate your fashion game.">
-    <meta name="keywords" content="zeemkahleem, luxury fashion, premium clothing, designer clothes, luxury store, fashion Nigeria, zeemkahleem luxury, online fashion store">
+    <title><?= $page_title ?></title>
+    <meta name="description" content="<?= $page_description ?>">
+    <meta name="keywords" content="zeemkahleem, zeemkahleem luxury, luxury clothing, Nigerian fashion, fashion brand, online store, designer clothes, men's fashion, women's fashion, premium clothing, luxury fashion Nigeria">
     <meta name="author" content="ZEEMKAHLEEM LUXURY">
     <meta name="robots" content="index, follow">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://zeemkahleemluxury.pxxl.click/">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/zeemkahleem_favicon.png">
+    <link rel="apple-touch-icon" href="assets/zeemkahleem_favicon.png">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://zeemkahleemluxury.pxxl.click/">
-    <meta property="og:title" content="ZEEMKAHLEEM LUXURY - Premium Fashion Store">
-    <meta property="og:description" content="Discover exclusive luxury fashion collections at ZEEMKAHLEEM LUXURY. Premium clothing, designer outfits, and sophisticated style for the modern individual.">
-    <meta property="og:image" content="https://zeemkahleemluxury.pxxl.click/logo.jpeg">
+    <meta property="og:title" content="<?= $page_title ?>">
+    <meta property="og:description" content="<?= $page_description ?>">
+    <meta property="og:image" content="https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="ZEEMKAHLEEM LUXURY">
+    <meta property="og:locale" content="en_US">
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://zeemkahleemluxury.pxxl.click/">
-    <meta property="twitter:title" content="ZEEMKAHLEEM LUXURY - Premium Fashion Store">
-    <meta property="twitter:description" content="Discover exclusive luxury fashion collections at ZEEMKAHLEEM LUXURY. Premium clothing and designer outfits.">
-    <meta property="twitter:image" content="https://zeemkahleemluxury.pxxl.click/uploads/logo.jpeg">
-    
-    <!-- Canonical URL -->
-    <link rel="canonical" href="https://zeemkahleemluxury.pxxl.click/">
+    <meta property="twitter:title" content="<?= $page_title ?>">
+    <meta property="twitter:description" content="<?= $page_description ?>">
+    <meta property="twitter:image" content="https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png">
+    <meta property="twitter:creator" content="@zeemkahleem">
     
     <!-- SEO Header Links -->
     <link rel="sitemap" type="application/xml" href="?sitemap=xml">
@@ -218,24 +224,26 @@ if (!empty($search_results)) {
     <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="image" href="https://images.unsplash.com/photo-1441986300917-64674bd600d8?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Structured Data -->
+    <!-- Primary Structured Data -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "ClothingStore",
         "name": "ZEEMKAHLEEM LUXURY",
-        "description": "Premium luxury fashion store offering exclusive clothing collections and designer outfits",
+        "description": "Premium luxury fashion store offering exclusive clothing collections and designer outfits for men and women in Nigeria",
         "url": "https://zeemkahleemluxury.pxxl.click/",
-        "logo": "https://zeemkahleemluxury.pxxl.click/uploads/zeemkahleem-logo.jpg",
-        "telephone": "+2348090654610",
+        "logo": "https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png",
+        "telephone": "+2349160935693",
         "email": "info@zeemkahleemluxury.com",
         "address": {
             "@type": "PostalAddress",
-            "addressCountry": "NG"
+            "addressCountry": "NG",
+            "addressRegion": "Lagos"
         },
         "openingHours": "Mo-Su 09:00-20:00",
         "priceRange": "₦₦₦",
@@ -247,6 +255,65 @@ if (!empty($search_results)) {
             "@type": "SearchAction",
             "target": "https://zeemkahleemluxury.pxxl.click/?q={search_term_string}",
             "query-input": "required name=search_term_string"
+        },
+        "areaServed": {
+            "@type": "Country",
+            "name": "Nigeria"
+        },
+        "hasOfferCatalog": {
+            "@type": "OfferCatalog",
+            "name": "Luxury Fashion Products",
+            "itemListElement": [
+                <?php
+                $catalog_items = [];
+                foreach ($categories as $index => $category) {
+                    $catalog_items[] = '{
+                        "@type": "OfferCatalog",
+                        "name": "' . h($category['name']) . '",
+                        "url": "https://zeemkahleemluxury.pxxl.click/?cat=' . $category['id'] . '",
+                        "itemListElement": []
+                    }';
+                }
+                echo implode(',', $catalog_items);
+                ?>
+            ]
+        }
+    }
+    </script>
+
+    <!-- Local Business Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "ZEEMKAHLEEM LUXURY",
+        "image": "https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png",
+        "@id": "https://zeemkahleemluxury.pxxl.click/",
+        "url": "https://zeemkahleemluxury.pxxl.click/",
+        "telephone": "+2349160935693",
+        "priceRange": "₦₦₦",
+        "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "NG"
+        },
+        "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": "6.5244",
+            "longitude": "3.3792"
+        },
+        "openingHoursSpecification": {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday",
+                "Saturday",
+                "Sunday"
+            ],
+            "opens": "09:00",
+            "closes": "20:00"
         }
     }
     </script>
@@ -1144,6 +1211,93 @@ if (!empty($search_results)) {
             transform: translateY(-3px);
         }
 
+        /* Category Breadcrumb */
+        .breadcrumb {
+            max-width: 1200px;
+            margin: 100px auto 0;
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .breadcrumb a {
+            color: var(--text);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .breadcrumb a:hover {
+            color: var(--primary);
+        }
+
+        .breadcrumb-separator {
+            color: var(--accent);
+        }
+
+        .current-category {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Category Info Header */
+        .category-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .category-title {
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .category-count {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        /* Active Category Highlight */
+        .nav-links a.active,
+        .mobile-nav-links a.active {
+            color: var(--primary);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        .nav-links a.active::after {
+            width: 100%;
+        }
+
+        /* No Products Message */
+        .no-products {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text);
+            opacity: 0.7;
+        }
+
+        .no-products i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .no-products h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Preload critical images */
+        .product-image {
+            loading: lazy;
+            fetchpriority: high;
+        }
+
         /* Enhanced Responsive Design */
         @media (max-width: 1200px) {
             .hero h1 {
@@ -1314,97 +1468,9 @@ if (!empty($search_results)) {
         .floating {
             animation: float 3s ease-in-out infinite;
         }
-    
-
-        /* Category Breadcrumb */
-        .breadcrumb {
-            max-width: 1200px;
-            margin: 100px auto 0;
-            padding: 0 2rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-
-        .breadcrumb a {
-            color: var(--text);
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
-
-        .breadcrumb a:hover {
-            color: var(--primary);
-        }
-
-        .breadcrumb-separator {
-            color: var(--accent);
-        }
-
-        .current-category {
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        /* Category Info Header */
-        .category-header {
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .category-title {
-            font-size: 3rem;
-            font-weight: 700;
-            background: linear-gradient(45deg, var(--primary), var(--accent));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 1rem;
-        }
-
-        .category-count {
-            font-size: 1.2rem;
-            opacity: 0.8;
-        }
-
-        /* Active Category Highlight */
-        .nav-links a.active,
-        .mobile-nav-links a.active {
-            color: var(--primary);
-            background: rgba(212, 175, 55, 0.1);
-        }
-
-        .nav-links a.active::after {
-            width: 100%;
-        }
-
-        /* No Products Message */
-        .no-products {
-            text-align: center;
-            padding: 4rem 2rem;
-            color: var(--text);
-            opacity: 0.7;
-        }
-
-        .no-products i {
-            font-size: 4rem;
-            margin-bottom: 1rem;
-            opacity: 0.5;
-        }
-
-        .no-products h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        /* Preload critical images */
-        .product-image {
-            loading: lazy;
-            fetchpriority: high;
-        }
     </style>
 </head>
-<body data-theme="dark">
+<body data-theme="dark" itemscope itemtype="https://schema.org/WebPage">
     <!-- Luxury Loading Screen -->
     <div class="loading-screen">
         <div class="luxury-loader">
@@ -1422,7 +1488,7 @@ if (!empty($search_results)) {
     <div class="top-bar">
         <div class="top-bar-content">
             <div class="brand">
-                <a href="index.php" style="text-decoration: none; display: flex; align-items: center; gap: 1rem;">
+                <a href="index.php" style="text-decoration: none; display: flex; align-items: center; gap: 1rem;" itemprop="url">
                     <div class="logo">ZK</div>
                     <span style="font-weight: 600; color: var(--text);">ZEEMKAHLEEM LUXURY</span>
                 </a>
@@ -1474,7 +1540,6 @@ if (!empty($search_results)) {
                     </a>
                 </li>
             <?php endforeach; ?>
-            <!-- <li><a href="admin.php"><i class="fas fa-cog"></i> Admin Panel</a></li> -->
         </ul>
 
         <div class="nav-footer">
@@ -1540,13 +1605,16 @@ if (!empty($search_results)) {
                     <?php foreach ($search_results as $product): 
                         $images = explode(',', $product['images']);
                     ?>
-                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)">
-                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy">
+                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)" itemscope itemtype="https://schema.org/Product">
+                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy" itemprop="image">
                             <div class="product-info">
-                                <h3><?= h($product['name']) ?></h3>
-                                <p style="color: var(--accent); margin-bottom: 0.5rem;"><?= h($product['category_name']) ?></p>
-                                <div class="product-price">₦<?= number_format($product['price'], 2) ?></div>
-                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)">
+                                <h3 itemprop="name"><?= h($product['name']) ?></h3>
+                                <p style="color: var(--accent); margin-bottom: 0.5rem;" itemprop="category"><?= h($product['category_name']) ?></p>
+                                <div class="product-price" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                    <span itemprop="priceCurrency" content="NGN">₦</span>
+                                    <span itemprop="price" content="<?= $product['price'] ?>"><?= number_format($product['price'], 2) ?></span>
+                                </div>
+                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
                                     <i class="fas fa-shopping-bag"></i> Add to Cart
                                 </button>
                             </div>
@@ -1576,12 +1644,15 @@ if (!empty($search_results)) {
                     <?php foreach ($category_products as $product): 
                         $images = explode(',', $product['images']);
                     ?>
-                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)">
-                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy">
+                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)" itemscope itemtype="https://schema.org/Product">
+                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy" itemprop="image">
                             <div class="product-info">
-                                <h3><?= h($product['name']) ?></h3>
-                                <div class="product-price">₦<?= number_format($product['price'], 2) ?></div>
-                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)">
+                                <h3 itemprop="name"><?= h($product['name']) ?></h3>
+                                <div class="product-price" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                    <span itemprop="priceCurrency" content="NGN">₦</span>
+                                    <span itemprop="price" content="<?= $product['price'] ?>"><?= number_format($product['price'], 2) ?></span>
+                                </div>
+                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
                                     <i class="fas fa-shopping-bag"></i> Add to Cart
                                 </button>
                             </div>
@@ -1598,12 +1669,15 @@ if (!empty($search_results)) {
                     <?php foreach ($products as $product): 
                         $images = explode(',', $product['images']);
                     ?>
-                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)">
-                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy">
+                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)" itemscope itemtype="https://schema.org/Product">
+                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy" itemprop="image">
                             <div class="product-info">
-                                <h3><?= h($product['name']) ?></h3>
-                                <div class="product-price">₦<?= number_format($product['price'], 2) ?></div>
-                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)">
+                                <h3 itemprop="name"><?= h($product['name']) ?></h3>
+                                <div class="product-price" itemprop="offers" itemscope itemtype="https://schema.org/Offer">
+                                    <span itemprop="priceCurrency" content="NGN">₦</span>
+                                    <span itemprop="price" content="<?= $product['price'] ?>"><?= number_format($product['price'], 2) ?></span>
+                                </div>
+                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
                                     <i class="fas fa-shopping-bag"></i> Add to Cart
                                 </button>
                             </div>
@@ -1615,9 +1689,9 @@ if (!empty($search_results)) {
     </div>
 
     <!-- Luxury Footer -->
-    <footer class="luxury-footer">
+    <footer class="luxury-footer" itemscope itemtype="https://schema.org/Organization">
         <div class="footer-content">
-            <div class="social-links" itemscope itemtype="https://schema.org/Organization">
+            <div class="social-links">
                 <link itemprop="url" href="https://zeemkahleemluxury.pxxl.click/">
                 <a href="https://www.instagram.com/zeemkhaleem_closet0/" target="_blank" itemprop="sameAs">
                     <i class="fab fa-instagram"></i>
@@ -1628,7 +1702,7 @@ if (!empty($search_results)) {
                 <a href="https://www.tiktok.com/@zeemkhaleem_closets" target="_blank" itemprop="sameAs">
                     <i class="fab fa-tiktok"></i>
                 </a>
-                <a href="https://wa.me/2348090654610" target="_blank" itemprop="sameAs">
+                <a href="https://wa.me/2349160935693" target="_blank" itemprop="sameAs">
                     <i class="fab fa-whatsapp"></i>
                 </a>
             </div>
