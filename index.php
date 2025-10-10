@@ -15,7 +15,7 @@ if (isset($_GET['sitemap']) && $_GET['sitemap'] == 'xml') {
             xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
         
         <url>
-            <loc>https://zeemkahleemluxury.pxxl.click/</loc>
+            <loc>https://zeemkahleemluxury.com/</loc>
             <lastmod><?= date('Y-m-d') ?></lastmod>
             <changefreq>daily</changefreq>
             <priority>1.0</priority>
@@ -25,7 +25,7 @@ if (isset($_GET['sitemap']) && $_GET['sitemap'] == 'xml') {
         // Categories
         foreach ($categories as $category) {
             echo '<url>
-                <loc>https://zeemkahleemluxury.pxxl.click/?cat=' . $category['id'] . '</loc>
+                <loc>https://zeemkahleemluxury.com/?cat=' . $category['id'] . '</loc>
                 <lastmod>' . date('Y-m-d') . '</lastmod>
                 <changefreq>weekly</changefreq>
                 <priority>0.8</priority>
@@ -37,14 +37,14 @@ if (isset($_GET['sitemap']) && $_GET['sitemap'] == 'xml') {
         foreach ($products as $product) {
             $images = explode(',', $product['images']);
             echo '<url>
-                <loc>https://zeemkahleemluxury.pxxl.click/</loc>
+                <loc>https://zeemkahleemluxury.com/</loc>
                 <lastmod>' . date('Y-m-d', strtotime($product['updated_at'] ?: $product['created_at'])) . '</lastmod>
                 <changefreq>monthly</changefreq>
                 <priority>0.7</priority>';
             
             if (!empty($images[0])) {
                 echo '<image:image>
-                    <image:loc>https://zeemkahleemluxury.pxxl.click/uploads/' . htmlspecialchars($images[0]) . '</image:loc>
+                    <image:loc>https://zeemkahleemluxury.com/uploads/' . htmlspecialchars($images[0]) . '</image:loc>
                     <image:title>' . htmlspecialchars($product['name']) . ' - ZEEMKAHLEEM LUXURY</image:title>
                     <image:caption>' . htmlspecialchars($product['description'] ?: $product['name']) . '</image:caption>
                 </image:image>';
@@ -70,10 +70,10 @@ if (isset($_GET['rss']) && $_GET['rss'] == 'feed') {
     <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
     <channel>
         <title>ZEEMKAHLEEM LUXURY - Premium Fashion Store</title>
-        <link>https://zeemkahleemluxury.pxxl.click/</link>
+        <link>https://zeemkahleemluxury.com/</link>
         <description>Latest luxury fashion products from ZEEMKAHLEEM LUXURY store</description>
         <language>en-us</language>
-        <atom:link href="https://zeemkahleemluxury.pxxl.click/?rss=feed" rel="self" type="application/rss+xml" />
+        <atom:link href="https://zeemkahleemluxury.com/?rss=feed" rel="self" type="application/rss+xml" />
         <lastBuildDate><?= date('r') ?></lastBuildDate>
         <ttl>60</ttl>
         
@@ -82,10 +82,10 @@ if (isset($_GET['rss']) && $_GET['rss'] == 'feed') {
         ?>
         <item>
             <title><?= htmlspecialchars($product['name']) ?></title>
-            <link>https://zeemkahleemluxury.pxxl.click/</link>
+            <link>https://zeemkahleemluxury.com/</link>
             <description>
                 <![CDATA[
-                <img src="https://zeemkahleemluxury.pxxl.click/uploads/<?= $images[0] ?>" alt="<?= htmlspecialchars($product['name']) ?>" />
+                <img src="https://zeemkahleemluxury.com/uploads/<?= $images[0] ?>" alt="<?= htmlspecialchars($product['name']) ?>" />
                 <p><?= htmlspecialchars($product['description'] ?: 'Luxury fashion product from ZEEMKAHLEEM LUXURY') ?></p>
                 <p>Price: ₦<?= number_format($product['price'], 2) ?></p>
                 <p>Category: <?= htmlspecialchars($product['category_name']) ?></p>
@@ -191,7 +191,7 @@ if (!empty($search)) {
     <meta name="robots" content="index, follow">
     
     <!-- Canonical URL -->
-    <link rel="canonical" href="https://zeemkahleemluxury.pxxl.click/">
+    <link rel="canonical" href="https://zeemkahleemluxury.com/">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="assets/zeemkahleem_favicon.png">
@@ -199,10 +199,10 @@ if (!empty($search)) {
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://zeemkahleemluxury.pxxl.click/">
+    <meta property="og:url" content="https://zeemkahleemluxury.com/">
     <meta property="og:title" content="<?= $page_title ?>">
     <meta property="og:description" content="<?= $page_description ?>">
-    <meta property="og:image" content="https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png">
+    <meta property="og:image" content="https://zeemkahleemluxury.com/assets/zeemkahleem_logo.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:site_name" content="ZEEMKAHLEEM LUXURY">
@@ -210,10 +210,10 @@ if (!empty($search)) {
     
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="https://zeemkahleemluxury.pxxl.click/">
+    <meta property="twitter:url" content="https://zeemkahleemluxury.com/">
     <meta property="twitter:title" content="<?= $page_title ?>">
     <meta property="twitter:description" content="<?= $page_description ?>">
-    <meta property="twitter:image" content="https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png">
+    <meta property="twitter:image" content="https://zeemkahleemluxury.com/assets/zeemkahleem_logo.png">
     <meta property="twitter:creator" content="@zeemkahleem">
     
     <!-- SEO Header Links -->
@@ -236,8 +236,8 @@ if (!empty($search)) {
         "@type": "ClothingStore",
         "name": "ZEEMKAHLEEM LUXURY",
         "description": "Premium luxury fashion store offering exclusive clothing collections and designer outfits for men and women in Nigeria",
-        "url": "https://zeemkahleemluxury.pxxl.click/",
-        "logo": "https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png",
+        "url": "https://zeemkahleemluxury.com/",
+        "logo": "https://zeemkahleemluxury.com/assets/zeemkahleem_logo.png",
         "telephone": "+2349160935693",
         "email": "info@zeemkahleemluxury.com",
         "address": {
@@ -253,7 +253,7 @@ if (!empty($search)) {
         ],
         "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://zeemkahleemluxury.pxxl.click/?q={search_term_string}",
+            "target": "https://zeemkahleemluxury.com/?q={search_term_string}",
             "query-input": "required name=search_term_string"
         },
         "areaServed": {
@@ -270,7 +270,7 @@ if (!empty($search)) {
                     $catalog_items[] = '{
                         "@type": "OfferCatalog",
                         "name": "' . h($category['name']) . '",
-                        "url": "https://zeemkahleemluxury.pxxl.click/?cat=' . $category['id'] . '",
+                        "url": "https://zeemkahleemluxury.com/?cat=' . $category['id'] . '",
                         "itemListElement": []
                     }';
                 }
@@ -287,9 +287,9 @@ if (!empty($search)) {
         "@context": "https://schema.org",
         "@type": "LocalBusiness",
         "name": "ZEEMKAHLEEM LUXURY",
-        "image": "https://zeemkahleemluxury.pxxl.click/assets/zeemkahleem_logo.png",
-        "@id": "https://zeemkahleemluxury.pxxl.click/",
-        "url": "https://zeemkahleemluxury.pxxl.click/",
+        "image": "https://zeemkahleemluxury.com/assets/zeemkahleem_logo.png",
+        "@id": "https://zeemkahleemluxury.com/",
+        "url": "https://zeemkahleemluxury.com/",
         "telephone": "+2349160935693",
         "priceRange": "₦₦₦",
         "address": {
@@ -1692,7 +1692,7 @@ if (!empty($search)) {
     <footer class="luxury-footer" itemscope itemtype="https://schema.org/Organization">
         <div class="footer-content">
             <div class="social-links">
-                <link itemprop="url" href="https://zeemkahleemluxury.pxxl.click/">
+                <link itemprop="url" href="https://zeemkahleemluxury.com/">
                 <a href="https://www.instagram.com/zeemkhaleem_closet0/" target="_blank" itemprop="sameAs">
                     <i class="fab fa-instagram"></i>
                 </a>
@@ -1727,7 +1727,7 @@ if (!empty($search)) {
         "@type": "ItemList",
         "name": "ZEEMKAHLEEM LUXURY Products",
         "description": "Luxury fashion products from ZEEMKAHLEEM LUXURY store",
-        "url": "https://zeemkahleemluxury.pxxl.click/",
+        "url": "https://zeemkahleemluxury.com/",
         "numberOfItems": <?= count($structured_products) ?>,
         "itemListElement": [
             <?php
@@ -1741,7 +1741,7 @@ if (!empty($search)) {
                         "@type": "Product",
                         "name": "' . h($product['name']) . '",
                         "description": "' . h($product['description'] ?: 'Luxury fashion item from ZEEMKAHLEEM LUXURY') . '",
-                        "image": "https://zeemkahleemluxury.pxxl.click/uploads/' . h($images[0]) . '",
+                        "image": "https://zeemkahleemluxury.com/uploads/' . h($images[0]) . '",
                         "sku": "ZK' . $product['id'] . '",
                         "brand": {
                             "@type": "Brand",
@@ -1749,7 +1749,7 @@ if (!empty($search)) {
                         },
                         "offers": {
                             "@type": "Offer",
-                            "url": "https://zeemkahleemluxury.pxxl.click/",
+                            "url": "https://zeemkahleemluxury.com/",
                             "priceCurrency": "NGN",
                             "price": "' . $product['price'] . '",
                             "availability": "https://schema.org/InStock",
