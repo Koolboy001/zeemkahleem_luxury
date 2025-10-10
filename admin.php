@@ -128,67 +128,90 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0) {
             try {
-                $slug = simple_slugify($name);
-                $images = [];
-                
-                // Handle main image upload
-                if (!empty($_FILES['main_image']['name'])) {
-                    $main_file = $_FILES['main_image'];
-                    if ($main_file['error'] === UPLOAD_ERR_OK) {
-                        $file_name = $main_file['name'];
-                        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                        $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                // Check total upload size first
+                $total_upload_size = getTotalUploadSize($_FILES);
+                if ($total_upload_size > MAX_TOTAL_UPLOAD_SIZE) {
+                    $error = "Total upload size exceeds maximum allowed limit of " . (MAX_TOTAL_UPLOAD_SIZE / 1024 / 1024) . "MB";
+                } else {
+                    $slug = simple_slugify($name);
+                    $images = [];
+                    
+                    // Handle main image upload
+                    if (!empty($_FILES['main_image']['name'])) {
+                        $main_file = $_FILES['main_image'];
+                        $file_errors = validateFile($main_file, true);
                         
-                        if (in_array($file_ext, $allowed_ext)) {
+                        if (!empty($file_errors)) {
+                            $error = implode(', ', $file_errors);
+                        } else {
+                            $file_name = $main_file['name'];
+                            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
                             $new_filename = uniqid('main_') . '.' . $file_ext;
                             $upload_path = 'uploads/' . $new_filename;
                             
-                            if (move_uploaded_file($main_file['tmp_name'], $upload_path)) {
+                            if (safeMoveUploadedFile($main_file['tmp_name'], $upload_path)) {
                                 $images[] = $new_filename;
                             } else {
                                 $error = "Failed to upload main image. Check directory permissions.";
                             }
-                        } else {
-                            $error = "Invalid file type for main image. Allowed: jpg, jpeg, png, gif, webp";
                         }
                     } else {
-                        $error = "Main image upload error: " . $main_file['error'];
+                        $error = "Main product image is required";
                     }
-                }
-                
-                // Handle additional images upload only if no error so far
-                if (empty($error) && !empty($_FILES['additional_images']['name'][0])) {
-                    foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
-                        if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
-                            $file_name = $_FILES['additional_images']['name'][$key];
-                            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                            $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                            
-                            if (in_array($file_ext, $allowed_ext)) {
-                                $new_filename = uniqid('add_') . '.' . $file_ext;
-                                $upload_path = 'uploads/' . $new_filename;
+                    
+                    // Handle additional images upload only if no error so far
+                    if (empty($error) && !empty($_FILES['additional_images']['name'][0])) {
+                        foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
+                            if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
+                                $additional_file = [
+                                    'name' => $_FILES['additional_images']['name'][$key],
+                                    'type' => $_FILES['additional_images']['type'][$key],
+                                    'tmp_name' => $tmp_name,
+                                    'error' => $_FILES['additional_images']['error'][$key],
+                                    'size' => $_FILES['additional_images']['size'][$key]
+                                ];
                                 
-                                if (move_uploaded_file($tmp_name, $upload_path)) {
-                                    $images[] = $new_filename;
+                                $file_errors = validateFile($additional_file);
+                                if (empty($file_errors)) {
+                                    $file_name = $additional_file['name'];
+                                    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                                    $new_filename = uniqid('add_') . '.' . $file_ext;
+                                    $upload_path = 'uploads/' . $new_filename;
+                                    
+                                    if (safeMoveUploadedFile($tmp_name, $upload_path)) {
+                                        $images[] = $new_filename;
+                                    }
+                                } else {
+                                    // Log the error but continue with other files
+                                    error_log("Additional image upload error: " . implode(', ', $file_errors));
                                 }
                             }
                         }
                     }
-                }
-                
-                if (empty($images) && empty($error)) {
-                    $error = "Please upload at least the main product image";
-                }
-                
-                if (empty($error)) {
-                    $images_str = implode(',', $images);
-                    $stmt = $pdo->prepare("INSERT INTO products (category_id, name, slug, description, price, images) VALUES (?, ?, ?, ?, ?, ?)");
-                    $stmt->execute([$category_id, $name, $slug, $description, $price, $images_str]);
-                    $message = "Product '$name' added successfully!";
+                    
+                    if (empty($images) && empty($error)) {
+                        $error = "Please upload at least the main product image";
+                    }
+                    
+                    if (empty($error)) {
+                        $images_str = implode(',', $images);
+                        $stmt = $pdo->prepare("INSERT INTO products (category_id, name, slug, description, price, images) VALUES (?, ?, ?, ?, ?, ?)");
+                        $stmt->execute([$category_id, $name, $slug, $description, $price, $images_str]);
+                        $message = "Product '$name' added successfully!";
+                    }
                 }
             } catch (PDOException $e) {
                 $error = "Error adding product: " . $e->getMessage();
                 error_log("Product add error: " . $e->getMessage());
+                
+                // Clean up uploaded files if database operation failed
+                if (!empty($images)) {
+                    foreach ($images as $image) {
+                        if (file_exists('uploads/' . $image)) {
+                            @unlink('uploads/' . $image);
+                        }
+                    }
+                }
             }
         } else {
             $error = "Please fill all required fields with valid data";
@@ -206,22 +229,30 @@ if ($is_logged_in) {
         
         if (!empty($name) && $category_id > 0 && $price > 0 && $product_id > 0) {
             try {
-                $slug = simple_slugify($name);
-                $images = is_array($existing_images) ? $existing_images : [];
-                
-                // Handle new main image upload
-                if (!empty($_FILES['main_image']['name'])) {
-                    $main_file = $_FILES['main_image'];
-                    if ($main_file['error'] === UPLOAD_ERR_OK) {
-                        $file_name = $main_file['name'];
-                        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                        $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                // Check total upload size first
+                $total_upload_size = getTotalUploadSize($_FILES);
+                if ($total_upload_size > MAX_TOTAL_UPLOAD_SIZE) {
+                    $error = "Total upload size exceeds maximum allowed limit of " . (MAX_TOTAL_UPLOAD_SIZE / 1024 / 1024) . "MB";
+                } else {
+                    $slug = simple_slugify($name);
+                    $images = is_array($existing_images) ? $existing_images : [];
+                    $new_images = [];
+                    
+                    // Handle new main image upload
+                    if (!empty($_FILES['main_image']['name'])) {
+                        $main_file = $_FILES['main_image'];
+                        $file_errors = validateFile($main_file);
                         
-                        if (in_array($file_ext, $allowed_ext)) {
+                        if (!empty($file_errors)) {
+                            $error = implode(', ', $file_errors);
+                        } else {
+                            $file_name = $main_file['name'];
+                            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
                             $new_filename = uniqid('main_') . '.' . $file_ext;
                             $upload_path = 'uploads/' . $new_filename;
                             
-                            if (move_uploaded_file($main_file['tmp_name'], $upload_path)) {
+                            if (safeMoveUploadedFile($main_file['tmp_name'], $upload_path)) {
+                                $new_images[] = $new_filename;
                                 // Replace the first image (main image)
                                 if (!empty($images)) {
                                     // Delete old main image
@@ -233,38 +264,57 @@ if ($is_logged_in) {
                                 } else {
                                     $images[] = $new_filename;
                                 }
+                            } else {
+                                $error = "Failed to upload main image";
                             }
                         }
                     }
-                }
-                
-                // Handle new additional images upload
-                if (!empty($_FILES['additional_images']['name'][0])) {
-                    foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
-                        if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
-                            $file_name = $_FILES['additional_images']['name'][$key];
-                            $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
-                            $allowed_ext = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-                            
-                            if (in_array($file_ext, $allowed_ext)) {
-                                $new_filename = uniqid('add_') . '.' . $file_ext;
-                                $upload_path = 'uploads/' . $new_filename;
+                    
+                    // Handle new additional images upload
+                    if (empty($error) && !empty($_FILES['additional_images']['name'][0])) {
+                        foreach ($_FILES['additional_images']['tmp_name'] as $key => $tmp_name) {
+                            if ($_FILES['additional_images']['error'][$key] === UPLOAD_ERR_OK) {
+                                $additional_file = [
+                                    'name' => $_FILES['additional_images']['name'][$key],
+                                    'type' => $_FILES['additional_images']['type'][$key],
+                                    'tmp_name' => $tmp_name,
+                                    'error' => $_FILES['additional_images']['error'][$key],
+                                    'size' => $_FILES['additional_images']['size'][$key]
+                                ];
                                 
-                                if (move_uploaded_file($tmp_name, $upload_path)) {
-                                    $images[] = $new_filename;
+                                $file_errors = validateFile($additional_file);
+                                if (empty($file_errors)) {
+                                    $file_name = $additional_file['name'];
+                                    $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+                                    $new_filename = uniqid('add_') . '.' . $file_ext;
+                                    $upload_path = 'uploads/' . $new_filename;
+                                    
+                                    if (safeMoveUploadedFile($tmp_name, $upload_path)) {
+                                        $new_images[] = $new_filename;
+                                        $images[] = $new_filename;
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                
-                if (empty($images)) {
-                    $error = "Product must have at least one image";
-                } else {
-                    $images_str = implode(',', $images);
-                    $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, slug = ?, description = ?, price = ?, images = ? WHERE id = ?");
-                    $stmt->execute([$category_id, $name, $slug, $description, $price, $images_str, $product_id]);
-                    $message = "Product '$name' updated successfully!";
+                    
+                    if (empty($images)) {
+                        $error = "Product must have at least one image";
+                    } else if (empty($error)) {
+                        $images_str = implode(',', $images);
+                        $stmt = $pdo->prepare("UPDATE products SET category_id = ?, name = ?, slug = ?, description = ?, price = ?, images = ? WHERE id = ?");
+                        $stmt->execute([$category_id, $name, $slug, $description, $price, $images_str, $product_id]);
+                        $message = "Product '$name' updated successfully!";
+                    }
+                    
+                    // Clean up new images if there was an error
+                    if (!empty($error) && !empty($new_images)) {
+                        foreach ($new_images as $image) {
+                            if (file_exists('uploads/' . $image)) {
+                                @unlink('uploads/' . $image);
+                            }
+                        }
+                    }
                 }
             } catch (PDOException $e) {
                 $error = "Error updating product: " . $e->getMessage();
@@ -367,6 +417,10 @@ if ($is_logged_in) {
             --bg-dark: #0f0f1a;
             --glass-light: rgba(255, 255, 255, 0.1);
             --glass-dark: rgba(0, 0, 0, 0.2);
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --info: #17a2b8;
         }
 
         [data-theme="light"] {
@@ -393,6 +447,7 @@ if ($is_logged_in) {
             color: var(--text);
             min-height: 100vh;
             padding: 20px;
+            line-height: 1.6;
         }
 
         .admin-container {
@@ -407,6 +462,8 @@ if ($is_logged_in) {
             margin-bottom: 2rem;
             padding-bottom: 1rem;
             border-bottom: 2px solid var(--primary);
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .admin-card {
@@ -416,12 +473,21 @@ if ($is_logged_in) {
             padding: 2rem;
             margin-bottom: 2rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
         }
 
         .admin-card h2 {
             color: var(--primary);
             margin-bottom: 1.5rem;
             font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .admin-card h2::before {
+            content: '✦';
+            font-size: 1.2em;
         }
 
         .form-group {
@@ -432,6 +498,7 @@ if ($is_logged_in) {
             display: block;
             margin-bottom: 0.5rem;
             font-weight: 500;
+            color: var(--accent);
         }
 
         .form-file {
@@ -443,6 +510,7 @@ if ($is_logged_in) {
             color: var(--text);
             cursor: pointer;
             transition: all 0.3s ease;
+            font-family: inherit;
         }
 
         .form-file:hover {
@@ -450,11 +518,28 @@ if ($is_logged_in) {
             background: rgba(255, 255, 255, 0.1);
         }
 
+        .form-file:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
+        }
+
         .file-hint {
             font-size: 0.875rem;
             color: var(--accent);
             margin-top: 0.5rem;
             font-style: italic;
+            opacity: 0.8;
+        }
+
+        .file-size-warning {
+            font-size: 0.875rem;
+            color: var(--warning);
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(255, 193, 7, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid var(--warning);
         }
 
         .image-preview {
@@ -471,28 +556,39 @@ if ($is_logged_in) {
             border-radius: 8px;
             border: 2px solid var(--primary);
             position: relative;
+            transition: transform 0.3s ease;
+        }
+
+        .preview-image:hover {
+            transform: scale(1.05);
         }
 
         .preview-image.main {
             border-color: var(--accent);
-            box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.5);
         }
 
         .remove-image {
             position: absolute;
             top: -8px;
             right: -8px;
-            background: #dc3545;
+            background: var(--danger);
             color: white;
             border: none;
             border-radius: 50%;
             width: 24px;
             height: 24px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .remove-image:hover {
+            background: #c82333;
+            transform: scale(1.1);
         }
 
         input, select, textarea {
@@ -503,11 +599,15 @@ if ($is_logged_in) {
             background: rgba(255, 255, 255, 0.1);
             color: var(--text);
             font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.3s ease;
         }
 
         input:focus, select:focus, textarea:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.3);
+            background: rgba(255, 255, 255, 0.15);
         }
 
         .btn {
@@ -518,8 +618,28 @@ if ($is_logged_in) {
             font-weight: 600;
             transition: all 0.3s ease;
             text-decoration: none;
-            display: inline-block;
-            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            font-family: inherit;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
         }
 
         .btn-primary {
@@ -530,37 +650,51 @@ if ($is_logged_in) {
         .btn-primary:hover {
             background: var(--accent);
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.3);
         }
 
         .btn-danger {
-            background: #dc3545;
+            background: var(--danger);
             color: white;
         }
 
         .btn-danger:hover {
             background: #c82333;
             transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(220, 53, 69, 0.3);
         }
 
         .btn-warning {
-            background: #ffc107;
+            background: var(--warning);
             color: var(--secondary);
         }
 
         .btn-warning:hover {
             background: #e0a800;
             transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 193, 7, 0.3);
         }
 
         .btn-info {
-            background: #17a2b8;
+            background: var(--info);
             color: white;
         }
 
         .btn-info:hover {
             background: #138496;
             transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(23, 162, 184, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.3);
         }
 
         .btn-sm {
@@ -568,22 +702,52 @@ if ($is_logged_in) {
             font-size: 0.875rem;
         }
 
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn:disabled:hover {
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         .message {
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             border-radius: 8px;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.success {
-            background: rgba(40, 167, 69, 0.2);
-            border: 1px solid #28a745;
+            background: rgba(40, 167, 69, 0.15);
+            border-color: var(--success);
             color: #28a745;
         }
 
         .message.error {
-            background: rgba(220, 53, 69, 0.2);
-            border: 1px solid #dc3545;
+            background: rgba(220, 53, 69, 0.15);
+            border-color: var(--danger);
             color: #dc3545;
+        }
+
+        .message.warning {
+            background: rgba(255, 193, 7, 0.15);
+            border-color: var(--warning);
+            color: #ffc107;
         }
 
         .login-container {
@@ -592,6 +756,7 @@ if ($is_logged_in) {
             align-items: center;
             min-height: 100vh;
             background: linear-gradient(135deg, var(--secondary), #16213e);
+            padding: 20px;
         }
 
         .login-form {
@@ -602,6 +767,7 @@ if ($is_logged_in) {
             border: 1px solid rgba(255, 255, 255, 0.2);
             width: 100%;
             max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
 
         .login-form h2 {
@@ -609,6 +775,7 @@ if ($is_logged_in) {
             color: var(--primary);
             margin-bottom: 2rem;
             font-size: 2rem;
+            text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
         }
 
         .products-grid {
@@ -620,10 +787,17 @@ if ($is_logged_in) {
 
         .product-item {
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 1rem;
+            border-radius: 12px;
+            padding: 1.5rem;
             border: 1px solid rgba(255, 255, 255, 0.1);
             position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .product-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border-color: rgba(212, 175, 55, 0.3);
         }
 
         .product-image {
@@ -632,6 +806,11 @@ if ($is_logged_in) {
             object-fit: cover;
             border-radius: 8px;
             margin-bottom: 1rem;
+            transition: transform 0.3s ease;
+        }
+
+        .product-item:hover .product-image {
+            transform: scale(1.05);
         }
 
         .product-actions {
@@ -650,15 +829,28 @@ if ($is_logged_in) {
         .stat-card {
             background: rgba(255, 255, 255, 0.05);
             padding: 1.5rem;
-            border-radius: 10px;
+            border-radius: 12px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary);
         }
 
         .stat-number {
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: bold;
             color: var(--primary);
+            text-shadow: 0 2px 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-top: 0.5rem;
         }
 
         /* Category Table */
@@ -666,6 +858,9 @@ if ($is_logged_in) {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         .category-table th,
@@ -681,13 +876,18 @@ if ($is_logged_in) {
             color: var(--primary);
         }
 
+        .category-table tr:last-child td {
+            border-bottom: none;
+        }
+
         .category-table tr:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.08);
         }
 
         .action-buttons {
             display: flex;
             gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
         /* Modal */
@@ -701,6 +901,12 @@ if ($is_logged_in) {
             background: rgba(0, 0, 0, 0.8);
             z-index: 1000;
             backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .modal-content {
@@ -716,18 +922,34 @@ if ($is_logged_in) {
             max-height: 90vh;
             overflow-y: auto;
             border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -40%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
         }
 
         .modal-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .modal-header h3 {
             color: var(--primary);
             margin: 0;
+            font-size: 1.5rem;
         }
 
         .close-modal {
@@ -736,6 +958,45 @@ if ($is_logged_in) {
             font-size: 1.5rem;
             color: var(--text);
             cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .close-modal:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--danger);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .upload-progress {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+            display: none;
+        }
+
+        .upload-progress-bar {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
         }
 
         @media (max-width: 768px) {
@@ -743,8 +1004,13 @@ if ($is_logged_in) {
                 padding: 10px;
             }
             
+            .admin-header {
+                flex-direction: column;
+                text-align: center;
+            }
+            
             .admin-card {
-                padding: 1rem;
+                padding: 1.5rem;
             }
             
             .products-grid {
@@ -767,6 +1033,73 @@ if ($is_logged_in) {
             .product-actions {
                 flex-direction: column;
             }
+            
+            .modal-content {
+                padding: 1.5rem;
+                width: 95%;
+            }
+            
+            .login-form {
+                padding: 2rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 10px;
+            }
+            
+            .admin-card {
+                padding: 1rem;
+            }
+            
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .action-buttons {
+                width: 100%;
+            }
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 2rem;
+            color: var(--accent);
+            opacity: 0.7;
+        }
+
+        .empty-state::before {
+            content: '📁';
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 1rem;
+            opacity: 0.5;
         }
     </style>
 </head>
@@ -791,19 +1124,24 @@ if ($is_logged_in) {
                     </div>
                     <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
                 </form>
-                <div style="margin-top: 1rem; text-align: center; color: #999;">
-                    Default: admin / admin123
+                <div style="margin-top: 1rem; text-align: center; color: #999; font-size: 0.9rem;">
+                    Default credentials: admin / admin123
                 </div>
             </div>
         </div>
     <?php else: ?>
+        <!-- Theme Toggle -->
+        <div class="theme-toggle" onclick="toggleTheme()">
+            <span id="theme-icon">🌙</span>
+        </div>
+
         <!-- Admin Dashboard -->
         <div class="admin-container">
             <div class="admin-header">
                 <h1>ZEEMKAHLEEM LUXURY - Admin Panel</h1>
-                <div>
-                    Welcome, <?= h($_SESSION['admin_username']) ?>! 
-                    <a href="?logout" class="btn btn-danger" style="margin-left: 1rem;">Logout</a>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span>Welcome, <strong><?= h($_SESSION['admin_username']) ?></strong>!</span>
+                    <a href="?logout" class="btn btn-danger">Logout</a>
                 </div>
             </div>
 
@@ -818,11 +1156,15 @@ if ($is_logged_in) {
             <div class="stats-grid">
                 <div class="stat-card">
                     <div class="stat-number"><?= count($categories) ?></div>
-                    <div>Categories</div>
+                    <div class="stat-label">Categories</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-number"><?= count($products) ?></div>
-                    <div>Products</div>
+                    <div class="stat-label">Products</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number"><?= array_sum($category_counts) ?></div>
+                    <div class="stat-label">Total Items</div>
                 </div>
             </div>
 
@@ -833,11 +1175,11 @@ if ($is_logged_in) {
                     <input type="hidden" name="action" value="create_admin">
                     <div class="form-group">
                         <label for="new_username">Username</label>
-                        <input type="text" id="new_username" name="new_username" required>
+                        <input type="text" id="new_username" name="new_username" required placeholder="Enter new admin username">
                     </div>
                     <div class="form-group">
                         <label for="new_password">Password</label>
-                        <input type="password" id="new_password" name="new_password" required>
+                        <input type="password" id="new_password" name="new_password" required placeholder="Enter new admin password">
                     </div>
                     <button type="submit" class="btn btn-primary">Create Admin</button>
                 </form>
@@ -860,7 +1202,9 @@ if ($is_logged_in) {
             <div class="admin-card">
                 <h2>Manage Categories (<?= count($categories) ?>)</h2>
                 <?php if (empty($categories)): ?>
-                    <p>No categories found. Add your first category above.</p>
+                    <div class="empty-state">
+                        No categories found. Add your first category above.
+                    </div>
                 <?php else: ?>
                     <table class="category-table">
                         <thead>
@@ -881,17 +1225,17 @@ if ($is_logged_in) {
                                         <div class="action-buttons">
                                             <button class="btn btn-warning btn-sm" 
                                                     onclick="openEditCategoryModal(<?= $category['id'] ?>, '<?= h($category['name']) ?>')">
-                                                Edit
+                                                ✏️ Edit
                                             </button>
                                             <?php if (($category_counts[$category['id']] ?? 0) === 0): ?>
                                                 <a href="?action=delete_category&id=<?= $category['id'] ?>" 
                                                    class="btn btn-danger btn-sm"
                                                    onclick="return confirm('Are you sure you want to delete this category?')">
-                                                    Delete
+                                                    🗑️ Delete
                                                 </a>
                                             <?php else: ?>
                                                 <button class="btn btn-danger btn-sm" disabled title="Cannot delete category with products">
-                                                    Delete
+                                                    🗑️ Delete
                                                 </button>
                                             <?php endif; ?>
                                         </div>
@@ -906,12 +1250,12 @@ if ($is_logged_in) {
             <!-- Add Product -->
             <div class="admin-card">
                 <h2>Add Product</h2>
-                <form method="POST" enctype="multipart/form-data" id="productForm">
+                <form method="POST" enctype="multipart/form-data" id="productForm" onsubmit="return validateProductForm()">
                     <input type="hidden" name="action" value="add_product">
                     
                     <div class="form-group">
                         <label for="product_name">Product Name</label>
-                        <input type="text" id="product_name" name="name" required>
+                        <input type="text" id="product_name" name="name" required placeholder="Enter product name">
                     </div>
                     
                     <div class="form-group">
@@ -926,12 +1270,17 @@ if ($is_logged_in) {
                     
                     <div class="form-group">
                         <label for="product_price">Price (₦)</label>
-                        <input type="number" id="product_price" name="price" step="0.01" min="0" required>
+                        <input type="number" id="product_price" name="price" step="0.01" min="0" required placeholder="0.00">
                     </div>
                     
                     <div class="form-group">
                         <label for="product_description">Description</label>
-                        <textarea id="product_description" name="description" rows="4"></textarea>
+                        <textarea id="product_description" name="description" rows="4" placeholder="Enter product description (optional)"></textarea>
+                    </div>
+
+                    <!-- Upload Progress -->
+                    <div class="upload-progress" id="uploadProgress">
+                        <div class="upload-progress-bar" id="uploadProgressBar"></div>
                     </div>
 
                     <!-- Main Product Image -->
@@ -939,6 +1288,7 @@ if ($is_logged_in) {
                         <label class="form-label">Main Product Image <span style="color: var(--accent)">*</span></label>
                         <input type="file" name="main_image" class="form-file" accept="image/*" required onchange="previewMainImage(this)">
                         <div class="file-hint">This will be the primary image displayed for the product</div>
+                        <div class="file-size-warning">Maximum file size: <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB per image</div>
                         <div class="image-preview" id="mainImagePreview"></div>
                     </div>
                     
@@ -950,35 +1300,46 @@ if ($is_logged_in) {
                         <div class="image-preview" id="additionalImagesPreview"></div>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary">Add Product</button>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        <span id="submitText">Add Product</span>
+                        <span id="submitLoading" class="loading" style="display: none;"></span>
+                    </button>
                 </form>
             </div>
 
             <!-- Products List -->
             <div class="admin-card">
                 <h2>Products (<?= count($products) ?>)</h2>
-                <div class="products-grid">
-                    <?php foreach ($products as $product): 
-                        $images = explode(',', $product['images']);
-                    ?>
-                        <div class="product-item">
-                            <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image">
-                            <h3><?= h($product['name']) ?></h3>
-                            <p><strong>Category:</strong> <?= h($product['category_name']) ?></p>
-                            <p><strong>Price:</strong> ₦<?= number_format($product['price'], 2) ?></p>
-                            <p><strong>Images:</strong> <?= count($images) ?></p>
-                            <p><strong>Added:</strong> <?= date('M j, Y', strtotime($product['created_at'])) ?></p>
-                            <div class="product-actions">
-                                <button class="btn btn-info btn-sm" onclick="openEditProductModal(<?= $product['id'] ?>)">Edit</button>
-                                <a href="?action=delete_product&id=<?= $product['id'] ?>" 
-                                   class="btn btn-danger btn-sm"
-                                   onclick="return confirm('Are you sure you want to delete this product? This action cannot be undone.')">
-                                    Delete
-                                </a>
+                <?php if (empty($products)): ?>
+                    <div class="empty-state">
+                        No products found. Add your first product above.
+                    </div>
+                <?php else: ?>
+                    <div class="products-grid">
+                        <?php foreach ($products as $product): 
+                            $images = explode(',', $product['images']);
+                        ?>
+                            <div class="product-item">
+                                <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy">
+                                <h3><?= h($product['name']) ?></h3>
+                                <p><strong>Category:</strong> <?= h($product['category_name']) ?></p>
+                                <p><strong>Price:</strong> ₦<?= number_format($product['price'], 2) ?></p>
+                                <p><strong>Images:</strong> <?= count($images) ?></p>
+                                <p><strong>Added:</strong> <?= date('M j, Y', strtotime($product['created_at'])) ?></p>
+                                <div class="product-actions">
+                                    <button class="btn btn-info btn-sm" onclick="openEditProductModal(<?= $product['id'] ?>)">
+                                        ✏️ Edit
+                                    </button>
+                                    <a href="?action=delete_product&id=<?= $product['id'] ?>" 
+                                       class="btn btn-danger btn-sm"
+                                       onclick="return confirm('Are you sure you want to delete \'<?= h($product['name']) ?>\'? This action cannot be undone.')">
+                                        🗑️ Delete
+                                    </a>
+                                </div>
                             </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -998,7 +1359,7 @@ if ($is_logged_in) {
                     </div>
                     <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                         <button type="submit" class="btn btn-primary">Update Category</button>
-                        <button type="button" class="btn" onclick="closeEditCategoryModal()">Cancel</button>
+                        <button type="button" class="btn btn-warning" onclick="closeEditCategoryModal()">Cancel</button>
                     </div>
                 </form>
             </div>
@@ -1011,7 +1372,7 @@ if ($is_logged_in) {
                     <h3>Edit Product</h3>
                     <button class="close-modal" onclick="closeEditProductModal()">&times;</button>
                 </div>
-                <form method="POST" enctype="multipart/form-data" id="editProductForm">
+                <form method="POST" enctype="multipart/form-data" id="editProductForm" onsubmit="return validateEditProductForm()">
                     <input type="hidden" name="action" value="edit_product">
                     <input type="hidden" name="product_id" id="edit_product_id">
                     
@@ -1044,7 +1405,7 @@ if ($is_logged_in) {
                     <div class="form-group">
                         <label class="form-label">Current Images</label>
                         <div class="image-preview" id="editCurrentImagesPreview"></div>
-                        <div class="file-hint">Click the X button to remove an image</div>
+                        <div class="file-hint">Click the X button to remove an image (at least one image must remain)</div>
                     </div>
 
                     <!-- New Main Product Image -->
@@ -1052,6 +1413,7 @@ if ($is_logged_in) {
                         <label class="form-label">Change Main Product Image</label>
                         <input type="file" name="main_image" class="form-file" accept="image/*" onchange="previewEditMainImage(this)">
                         <div class="file-hint">Upload a new image to replace the current main image</div>
+                        <div class="file-size-warning">Maximum file size: <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB per image</div>
                         <div class="image-preview" id="editMainImagePreview"></div>
                     </div>
                     
@@ -1064,14 +1426,38 @@ if ($is_logged_in) {
                     </div>
                     
                     <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
-                        <button type="submit" class="btn btn-primary">Update Product</button>
-                        <button type="button" class="btn" onclick="closeEditProductModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="editSubmitBtn">
+                            <span id="editSubmitText">Update Product</span>
+                            <span id="editSubmitLoading" class="loading" style="display: none;"></span>
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="closeEditProductModal()">Cancel</button>
                     </div>
                 </form>
             </div>
         </div>
 
         <script>
+            // Theme functionality
+            function toggleTheme() {
+                const body = document.body;
+                const themeIcon = document.getElementById('theme-icon');
+                const currentTheme = body.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                body.setAttribute('data-theme', newTheme);
+                themeIcon.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+                
+                // Save preference to localStorage
+                localStorage.setItem('admin-theme', newTheme);
+            }
+
+            // Load saved theme
+            document.addEventListener('DOMContentLoaded', function() {
+                const savedTheme = localStorage.getItem('admin-theme') || 'dark';
+                document.body.setAttribute('data-theme', savedTheme);
+                document.getElementById('theme-icon').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+            });
+
             // Category Modal Functions
             function openEditCategoryModal(categoryId, categoryName) {
                 document.getElementById('edit_category_id').value = categoryId;
@@ -1089,12 +1475,26 @@ if ($is_logged_in) {
                 preview.innerHTML = '';
                 
                 if (input.files && input.files[0]) {
+                    // Validate file size
+                    if (input.files[0].size > <?= MAX_FILE_SIZE ?>) {
+                        alert(`File size must be less than <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB`);
+                        input.value = '';
+                        return;
+                    }
+
                     const reader = new FileReader();
                     reader.onload = function(e) {
+                        const container = document.createElement('div');
+                        container.style.position = 'relative';
+                        container.style.display = 'inline-block';
+                        
                         const img = document.createElement('img');
                         img.src = e.target.result;
                         img.className = 'preview-image main';
-                        preview.appendChild(img);
+                        img.title = 'Main Product Image';
+                        
+                        container.appendChild(img);
+                        preview.appendChild(container);
                     }
                     reader.readAsDataURL(input.files[0]);
                 }
@@ -1106,16 +1506,79 @@ if ($is_logged_in) {
                 
                 if (input.files) {
                     for (let i = 0; i < input.files.length; i++) {
+                        // Validate file size
+                        if (input.files[i].size > <?= MAX_FILE_SIZE ?>) {
+                            alert(`File "${input.files[i].name}" exceeds <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB limit`);
+                            input.value = '';
+                            preview.innerHTML = '';
+                            return;
+                        }
+
                         const reader = new FileReader();
                         reader.onload = function(e) {
+                            const container = document.createElement('div');
+                            container.style.position = 'relative';
+                            container.style.display = 'inline-block';
+                            
                             const img = document.createElement('img');
                             img.src = e.target.result;
                             img.className = 'preview-image';
-                            preview.appendChild(img);
+                            img.title = `Additional Image ${preview.children.length + 1}`;
+                            
+                            container.appendChild(img);
+                            preview.appendChild(container);
                         }
                         reader.readAsDataURL(input.files[i]);
                     }
                 }
+            }
+
+            // Form Validation
+            function validateProductForm() {
+                const form = document.getElementById('productForm');
+                const mainImage = form.querySelector('input[name="main_image"]');
+                const submitBtn = document.getElementById('submitBtn');
+                const submitText = document.getElementById('submitText');
+                const submitLoading = document.getElementById('submitLoading');
+                
+                // Basic validation
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return false;
+                }
+                
+                // Check if main image is selected
+                if (!mainImage.files || !mainImage.files[0]) {
+                    alert('Please select a main product image');
+                    mainImage.focus();
+                    return false;
+                }
+                
+                // Show loading state
+                submitText.style.display = 'none';
+                submitLoading.style.display = 'inline-block';
+                submitBtn.disabled = true;
+                
+                return true;
+            }
+
+            function validateEditProductForm() {
+                const form = document.getElementById('editProductForm');
+                const submitBtn = document.getElementById('editSubmitBtn');
+                const submitText = document.getElementById('editSubmitText');
+                const submitLoading = document.getElementById('editSubmitLoading');
+                
+                if (!form.checkValidity()) {
+                    form.reportValidity();
+                    return false;
+                }
+                
+                // Show loading state
+                submitText.style.display = 'none';
+                submitLoading.style.display = 'inline-block';
+                submitBtn.disabled = true;
+                
+                return true;
             }
 
             // Edit Product Modal Functions
@@ -1123,7 +1586,11 @@ if ($is_logged_in) {
 
             async function openEditProductModal(productId) {
                 try {
+                    showLoadingState(true);
                     const response = await fetch(`get_product.php?id=${productId}`);
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch product data');
+                    }
                     const product = await response.json();
                     
                     // Populate form fields
@@ -1134,20 +1601,36 @@ if ($is_logged_in) {
                     document.getElementById('edit_product_description').value = product.description || '';
                     
                     // Handle images
-                    currentProductImages = product.images || [];
+                    currentProductImages = product.images ? product.images.split(',') : [];
                     displayCurrentImages(currentProductImages);
                     
                     // Show modal
                     document.getElementById('editProductModal').style.display = 'block';
                 } catch (error) {
                     console.error('Error fetching product:', error);
-                    alert('Error loading product data');
+                    alert('Error loading product data: ' + error.message);
+                } finally {
+                    showLoadingState(false);
+                }
+            }
+
+            function showLoadingState(show) {
+                // You can implement a global loading indicator here
+                if (show) {
+                    document.body.style.cursor = 'wait';
+                } else {
+                    document.body.style.cursor = 'default';
                 }
             }
 
             function displayCurrentImages(images) {
                 const preview = document.getElementById('editCurrentImagesPreview');
                 preview.innerHTML = '';
+                
+                if (images.length === 0) {
+                    preview.innerHTML = '<div class="empty-state" style="padding: 1rem;">No images</div>';
+                    return;
+                }
                 
                 images.forEach((image, index) => {
                     const container = document.createElement('div');
@@ -1158,11 +1641,13 @@ if ($is_logged_in) {
                     img.src = `uploads/${image}`;
                     img.className = `preview-image ${index === 0 ? 'main' : ''}`;
                     img.style.cursor = 'pointer';
+                    img.title = index === 0 ? 'Main Image' : `Image ${index + 1}`;
                     
                     const removeBtn = document.createElement('button');
                     removeBtn.innerHTML = '×';
                     removeBtn.className = 'remove-image';
-                    removeBtn.onclick = function() {
+                    removeBtn.onclick = function(e) {
+                        e.preventDefault();
                         removeImageFromProduct(image);
                     };
                     removeBtn.title = 'Remove this image';
@@ -1182,15 +1667,7 @@ if ($is_logged_in) {
                 if (confirm('Are you sure you want to remove this image?')) {
                     currentProductImages = currentProductImages.filter(img => img !== imageFilename);
                     displayCurrentImages(currentProductImages);
-                    
-                    // Update the form with remaining images
-                    updateExistingImagesField();
                 }
-            }
-
-            function updateExistingImagesField() {
-                // We'll handle this in the form submission by including currentProductImages
-                // For now, we'll store it in a hidden field or handle during form submission
             }
 
             function previewEditMainImage(input) {
@@ -1198,12 +1675,26 @@ if ($is_logged_in) {
                 preview.innerHTML = '';
                 
                 if (input.files && input.files[0]) {
+                    // Validate file size
+                    if (input.files[0].size > <?= MAX_FILE_SIZE ?>) {
+                        alert(`File size must be less than <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB`);
+                        input.value = '';
+                        return;
+                    }
+
                     const reader = new FileReader();
                     reader.onload = function(e) {
+                        const container = document.createElement('div');
+                        container.style.position = 'relative';
+                        container.style.display = 'inline-block';
+                        
                         const img = document.createElement('img');
                         img.src = e.target.result;
                         img.className = 'preview-image main';
-                        preview.appendChild(img);
+                        img.title = 'New Main Image';
+                        
+                        container.appendChild(img);
+                        preview.appendChild(container);
                     }
                     reader.readAsDataURL(input.files[0]);
                 }
@@ -1215,12 +1706,27 @@ if ($is_logged_in) {
                 
                 if (input.files) {
                     for (let i = 0; i < input.files.length; i++) {
+                        // Validate file size
+                        if (input.files[i].size > <?= MAX_FILE_SIZE ?>) {
+                            alert(`File "${input.files[i].name}" exceeds <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB limit`);
+                            input.value = '';
+                            preview.innerHTML = '';
+                            return;
+                        }
+
                         const reader = new FileReader();
                         reader.onload = function(e) {
+                            const container = document.createElement('div');
+                            container.style.position = 'relative';
+                            container.style.display = 'inline-block';
+                            
                             const img = document.createElement('img');
                             img.src = e.target.result;
                             img.className = 'preview-image';
-                            preview.appendChild(img);
+                            img.title = `New Additional Image ${i + 1}`;
+                            
+                            container.appendChild(img);
+                            preview.appendChild(container);
                         }
                         reader.readAsDataURL(input.files[i]);
                     }
@@ -1230,6 +1736,15 @@ if ($is_logged_in) {
             function closeEditProductModal() {
                 document.getElementById('editProductModal').style.display = 'none';
                 currentProductImages = [];
+                
+                // Reset loading states
+                const editSubmitText = document.getElementById('editSubmitText');
+                const editSubmitLoading = document.getElementById('editSubmitLoading');
+                const editSubmitBtn = document.getElementById('editSubmitBtn');
+                
+                editSubmitText.style.display = 'inline';
+                editSubmitLoading.style.display = 'none';
+                editSubmitBtn.disabled = false;
             }
 
             // Handle edit product form submission
@@ -1256,6 +1771,57 @@ if ($is_logged_in) {
                     closeEditProductModal();
                 }
             }
+
+            // Handle form resets
+            document.getElementById('productForm').addEventListener('reset', function() {
+                document.getElementById('mainImagePreview').innerHTML = '';
+                document.getElementById('additionalImagesPreview').innerHTML = '';
+                
+                const submitBtn = document.getElementById('submitBtn');
+                const submitText = document.getElementById('submitText');
+                const submitLoading = document.getElementById('submitLoading');
+                
+                submitText.style.display = 'inline';
+                submitLoading.style.display = 'none';
+                submitBtn.disabled = false;
+            });
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    closeEditCategoryModal();
+                    closeEditProductModal();
+                }
+            });
+
+            // Simulate upload progress (for demonstration)
+            function simulateUploadProgress() {
+                const progressBar = document.getElementById('uploadProgressBar');
+                const progressContainer = document.getElementById('uploadProgress');
+                let width = 0;
+                
+                progressContainer.style.display = 'block';
+                
+                const interval = setInterval(() => {
+                    if (width >= 100) {
+                        clearInterval(interval);
+                        setTimeout(() => {
+                            progressContainer.style.display = 'none';
+                        }, 500);
+                    } else {
+                        width++;
+                        progressBar.style.width = width + '%';
+                    }
+                }, 20);
+            }
+
+            // Add progress simulation to form submission
+            document.getElementById('productForm').addEventListener('submit', function() {
+                const files = this.querySelector('input[type="file"]').files;
+                if (files.length > 0) {
+                    simulateUploadProgress();
+                }
+            });
         </script>
     <?php endif; ?>
 </body>
