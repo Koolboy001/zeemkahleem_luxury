@@ -542,6 +542,16 @@ if ($is_logged_in) {
             border-left: 3px solid var(--warning);
         }
 
+        .file-size-success {
+            font-size: 0.875rem;
+            color: var(--success);
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(40, 167, 69, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid var(--success);
+        }
+
         .image-preview {
             display: flex;
             gap: 1rem;
@@ -1101,6 +1111,25 @@ if ($is_logged_in) {
             margin-bottom: 1rem;
             opacity: 0.5;
         }
+
+        .upload-stats {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .upload-stats h4 {
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-stats p {
+            margin: 0.25rem 0;
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body data-theme="dark">
@@ -1165,6 +1194,19 @@ if ($is_logged_in) {
                 <div class="stat-card">
                     <div class="stat-number"><?= array_sum($category_counts) ?></div>
                     <div class="stat-label">Total Items</div>
+                </div>
+            </div>
+
+            <!-- Upload Stats -->
+            <div class="admin-card">
+                <h2>Upload Configuration</h2>
+                <div class="upload-stats">
+                    <h4>Current Upload Limits</h4>
+                    <p>✅ Maximum file size: <strong>100MB</strong> per image</p>
+                    <p>✅ Total upload limit: <strong>500MB</strong> per request</p>
+                    <p>✅ Maximum files: <strong>20</strong> images per upload</p>
+                    <p>✅ Supported formats: JPG, JPEG, PNG, GIF, WEBP, BMP, SVG</p>
+                    <p>✅ Execution time: <strong>10 minutes</strong> for large uploads</p>
                 </div>
             </div>
 
@@ -1288,7 +1330,7 @@ if ($is_logged_in) {
                         <label class="form-label">Main Product Image <span style="color: var(--accent)">*</span></label>
                         <input type="file" name="main_image" class="form-file" accept="image/*" required onchange="previewMainImage(this)">
                         <div class="file-hint">This will be the primary image displayed for the product</div>
-                        <div class="file-size-warning">Maximum file size: <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB per image</div>
+                        <div class="file-size-success">✅ Maximum file size: 100MB per image (Supports: jpg, jpeg, png, gif, webp, bmp, svg)</div>
                         <div class="image-preview" id="mainImagePreview"></div>
                     </div>
                     
@@ -1297,6 +1339,7 @@ if ($is_logged_in) {
                         <label class="form-label">Additional Product Images</label>
                         <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewAdditionalImages(this)">
                         <div class="file-hint">You can select multiple images to show different angles of the product</div>
+                        <div class="file-size-success">✅ Maximum file size: 100MB per image. Total upload limit: 500MB</div>
                         <div class="image-preview" id="additionalImagesPreview"></div>
                     </div>
                     
@@ -1413,7 +1456,7 @@ if ($is_logged_in) {
                         <label class="form-label">Change Main Product Image</label>
                         <input type="file" name="main_image" class="form-file" accept="image/*" onchange="previewEditMainImage(this)">
                         <div class="file-hint">Upload a new image to replace the current main image</div>
-                        <div class="file-size-warning">Maximum file size: <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB per image</div>
+                        <div class="file-size-success">✅ Maximum file size: 100MB per image</div>
                         <div class="image-preview" id="editMainImagePreview"></div>
                     </div>
                     
@@ -1422,6 +1465,7 @@ if ($is_logged_in) {
                         <label class="form-label">Add More Product Images</label>
                         <input type="file" name="additional_images[]" class="form-file" accept="image/*" multiple onchange="previewEditAdditionalImages(this)">
                         <div class="file-hint">You can select multiple images to add to the product</div>
+                        <div class="file-size-success">✅ Maximum file size: 100MB per image. Total upload limit: 500MB</div>
                         <div class="image-preview" id="editAdditionalImagesPreview"></div>
                     </div>
                     
@@ -1469,15 +1513,53 @@ if ($is_logged_in) {
                 document.getElementById('editCategoryModal').style.display = 'none';
             }
 
+            // File size validation - MASSIVE LIMITS
+            function validateFileSize(input, maxSizeMB) {
+                if (input.files && input.files[0]) {
+                    const fileSize = input.files[0].size / 1024 / 1024; // in MB
+                    if (fileSize > maxSizeMB) {
+                        alert(`File size must be less than ${maxSizeMB}MB`);
+                        input.value = '';
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            // Add file size validation to file inputs
+            document.addEventListener('DOMContentLoaded', function() {
+                const mainImageInput = document.querySelector('input[name="main_image"]');
+                const additionalImagesInput = document.querySelector('input[name="additional_images[]"]');
+                
+                if (mainImageInput) {
+                    mainImageInput.addEventListener('change', function() {
+                        validateFileSize(this, 100); // 100MB limit
+                    });
+                }
+                
+                if (additionalImagesInput) {
+                    additionalImagesInput.addEventListener('change', function() {
+                        for (let i = 0; i < this.files.length; i++) {
+                            const fileSize = this.files[i].size / 1024 / 1024;
+                            if (fileSize > 100) {
+                                alert(`File "${this.files[i].name}" exceeds 100MB limit`);
+                                this.value = '';
+                                break;
+                            }
+                        }
+                    });
+                }
+            });
+
             // Product Image Preview Functions
             function previewMainImage(input) {
                 const preview = document.getElementById('mainImagePreview');
                 preview.innerHTML = '';
                 
                 if (input.files && input.files[0]) {
-                    // Validate file size
-                    if (input.files[0].size > <?= MAX_FILE_SIZE ?>) {
-                        alert(`File size must be less than <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB`);
+                    // Validate file size - 100MB limit
+                    if (input.files[0].size > 100 * 1024 * 1024) {
+                        alert(`File size must be less than 100MB`);
                         input.value = '';
                         return;
                     }
@@ -1506,9 +1588,9 @@ if ($is_logged_in) {
                 
                 if (input.files) {
                     for (let i = 0; i < input.files.length; i++) {
-                        // Validate file size
-                        if (input.files[i].size > <?= MAX_FILE_SIZE ?>) {
-                            alert(`File "${input.files[i].name}" exceeds <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB limit`);
+                        // Validate file size - 100MB limit
+                        if (input.files[i].size > 100 * 1024 * 1024) {
+                            alert(`File "${input.files[i].name}" exceeds 100MB limit`);
                             input.value = '';
                             preview.innerHTML = '';
                             return;
@@ -1581,7 +1663,7 @@ if ($is_logged_in) {
                 return true;
             }
 
-            // Edit Product Modal Functions
+            // Edit Product Modal Functions - FIXED VERSION
             let currentProductImages = [];
 
             async function openEditProductModal(productId) {
@@ -1600,8 +1682,8 @@ if ($is_logged_in) {
                     document.getElementById('edit_product_price').value = product.price;
                     document.getElementById('edit_product_description').value = product.description || '';
                     
-                    // Handle images
-                    currentProductImages = product.images ? product.images.split(',') : [];
+                    // Handle images - FIXED: No need to split, it's already an array
+                    currentProductImages = product.images || [];
                     displayCurrentImages(currentProductImages);
                     
                     // Show modal
@@ -1615,7 +1697,6 @@ if ($is_logged_in) {
             }
 
             function showLoadingState(show) {
-                // You can implement a global loading indicator here
                 if (show) {
                     document.body.style.cursor = 'wait';
                 } else {
@@ -1675,9 +1756,9 @@ if ($is_logged_in) {
                 preview.innerHTML = '';
                 
                 if (input.files && input.files[0]) {
-                    // Validate file size
-                    if (input.files[0].size > <?= MAX_FILE_SIZE ?>) {
-                        alert(`File size must be less than <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB`);
+                    // Validate file size - 100MB limit
+                    if (input.files[0].size > 100 * 1024 * 1024) {
+                        alert(`File size must be less than 100MB`);
                         input.value = '';
                         return;
                     }
@@ -1706,9 +1787,9 @@ if ($is_logged_in) {
                 
                 if (input.files) {
                     for (let i = 0; i < input.files.length; i++) {
-                        // Validate file size
-                        if (input.files[i].size > <?= MAX_FILE_SIZE ?>) {
-                            alert(`File "${input.files[i].name}" exceeds <?= (MAX_FILE_SIZE / 1024 / 1024) ?>MB limit`);
+                        // Validate file size - 100MB limit
+                        if (input.files[i].size > 100 * 1024 * 1024) {
+                            alert(`File "${input.files[i].name}" exceeds 100MB limit`);
                             input.value = '';
                             preview.innerHTML = '';
                             return;
@@ -1821,6 +1902,43 @@ if ($is_logged_in) {
                 if (files.length > 0) {
                     simulateUploadProgress();
                 }
+            });
+
+            // Auto-calculate total file size
+            function calculateTotalSize(input) {
+                let totalSize = 0;
+                if (input.files) {
+                    for (let i = 0; i < input.files.length; i++) {
+                        totalSize += input.files[i].size;
+                    }
+                }
+                return totalSize;
+            }
+
+            // Add file size display
+            document.addEventListener('DOMContentLoaded', function() {
+                const fileInputs = document.querySelectorAll('input[type="file"]');
+                fileInputs.forEach(input => {
+                    input.addEventListener('change', function() {
+                        const totalSize = calculateTotalSize(this);
+                        const sizeInMB = (totalSize / 1024 / 1024).toFixed(2);
+                        
+                        // Find or create size display
+                        let sizeDisplay = this.parentNode.querySelector('.file-size-display');
+                        if (!sizeDisplay) {
+                            sizeDisplay = document.createElement('div');
+                            sizeDisplay.className = 'file-size-display file-hint';
+                            this.parentNode.appendChild(sizeDisplay);
+                        }
+                        
+                        if (totalSize > 0) {
+                            sizeDisplay.textContent = `Total selected: ${sizeInMB} MB`;
+                            sizeDisplay.style.color = sizeInMB > 500 ? 'var(--danger)' : 'var(--success)';
+                        } else {
+                            sizeDisplay.textContent = '';
+                        }
+                    });
+                });
             });
         </script>
     <?php endif; ?>
