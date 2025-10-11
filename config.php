@@ -1,7 +1,7 @@
 <?php
 // Increase file upload limits at the very beginning
-ini_set('upload_max_filesize', '20M');
-ini_set('post_max_size', '20M');
+ini_set('upload_max_filesize', '100M');
+ini_set('post_max_size', '100M');
 ini_set('max_file_uploads', '20');
 ini_set('max_execution_time', 300);
 ini_set('max_input_time', 300);
@@ -20,9 +20,9 @@ define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50');
 define('BUSINESS_WHATSAPP', '2349160935693');
 
 // File upload configuration
-define('MAX_FILE_SIZE', 20 * 1024 * 1024); // 20MB in bytes
+define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB in bytes
 define('ALLOWED_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-define('MAX_TOTAL_UPLOAD_SIZE', 100 * 1024 * 1024); // 100MB total
+define('MAX_TOTAL_UPLOAD_SIZE', 500 * 1024 * 1024); // 500MB total
 
 // Session configuration for cart
 if (!isset($_SESSION['cart'])) {
