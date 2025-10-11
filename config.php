@@ -20,9 +20,9 @@ define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50');
 define('BUSINESS_WHATSAPP', '2349160935693');
 
 // File upload configuration
-define('MAX_FILE_SIZE', 5 * 1024 * 1024); // 5MB in bytes
+define('MAX_FILE_SIZE', 20 * 1024 * 1024); // 20MB in bytes
 define('ALLOWED_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-define('MAX_TOTAL_UPLOAD_SIZE', 20 * 1024 * 1024); // 20MB total
+define('MAX_TOTAL_UPLOAD_SIZE', 100 * 1024 * 1024); // 100MB total
 
 // Session configuration for cart
 if (!isset($_SESSION['cart'])) {
