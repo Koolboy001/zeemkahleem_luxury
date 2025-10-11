@@ -1,17 +1,16 @@
-# Increase file upload size limit
-php_value upload_max_filesize 50M
-php_value post_max_size 100M
-php_value max_file_uploads 20
-php_value max_execution_time 300
-php_value max_input_time 300
-php_value memory_limit 256M
+# Massive file upload size increase
+php_value upload_max_filesize 256M
+php_value post_max_size 256M
+php_value max_file_uploads 50
+php_value max_execution_time 600
+php_value max_input_time 600
+php_value memory_limit 512M
 
 # Security headers
 <IfModule mod_headers.c>
     Header always set X-Content-Type-Options nosniff
     Header always set X-Frame-Options DENY
     Header always set X-XSS-Protection "1; mode=block"
-    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
 # Prevent access to sensitive files
@@ -46,7 +45,7 @@ Options -Indexes
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^(.*)$ $1 [R=200,L]
 
-# URL rewriting (optional)
+# URL rewriting
 RewriteEngine On
 
 # Force HTTPS (uncomment if you have SSL)
