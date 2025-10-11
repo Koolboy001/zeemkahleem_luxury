@@ -1,15 +1,20 @@
 <?php
-// Increase file upload limits at the very beginning
-ini_set('upload_max_filesize', '100M');
-ini_set('post_max_size', '100M');
-ini_set('max_file_uploads', '20');
-ini_set('max_execution_time', 300);
-ini_set('max_input_time', 300);
-ini_set('memory_limit', '256M');
-ini_set('display_errors', 0); // Hide errors from users
+// MASSIVE FILE UPLOAD LIMITS - PREVENT 413 ERRORS
+ini_set('upload_max_filesize', '256M');
+ini_set('post_max_size', '256M');
+ini_set('max_file_uploads', '50');
+ini_set('max_execution_time', 600);
+ini_set('max_input_time', 600);
+ini_set('memory_limit', '512M');
+ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
-session_start();
+// Set session configurations if not already set
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.gc_maxlifetime', 7200);
+    session_set_cookie_params(7200);
+    session_start();
+}
 
 // Database configuration
 define('DB_HOST', 'db.pxxl.pro');
@@ -19,10 +24,11 @@ define('DB_USER', 'user_e38b806e');
 define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50');
 define('BUSINESS_WHATSAPP', '2349160935693');
 
-// File upload configuration
-define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB in bytes
-define('ALLOWED_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'webp']);
-define('MAX_TOTAL_UPLOAD_SIZE', 500 * 1024 * 1024); // 500MB total
+// File upload configuration - MASSIVE LIMITS
+define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB per file
+define('ALLOWED_EXTENSIONS', ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']);
+define('MAX_TOTAL_UPLOAD_SIZE', 500 * 1024 * 1024); // 500MB total upload
+define('MAX_FILES_PER_UPLOAD', 20); // Maximum files per upload
 
 // Session configuration for cart
 if (!isset($_SESSION['cart'])) {
@@ -179,13 +185,38 @@ function validateFile($file, $is_main = false) {
     
     // Check for upload errors
     if ($file['error'] !== UPLOAD_ERR_OK) {
-        $errors[] = getUploadError($file['error']);
+        // Handle specific upload errors
+        switch ($file['error']) {
+            case UPLOAD_ERR_INI_SIZE:
+            case UPLOAD_ERR_FORM_SIZE:
+                $errors[] = 'File size exceeds server limits. Maximum allowed: ' . (MAX_FILE_SIZE / 1024 / 1024) . 'MB per file';
+                break;
+            case UPLOAD_ERR_PARTIAL:
+                $errors[] = 'File was only partially uploaded';
+                break;
+            case UPLOAD_ERR_NO_TMP_DIR:
+                $errors[] = 'Missing temporary folder';
+                break;
+            case UPLOAD_ERR_CANT_WRITE:
+                $errors[] = 'Failed to write file to disk';
+                break;
+            case UPLOAD_ERR_EXTENSION:
+                $errors[] = 'A PHP extension stopped the file upload';
+                break;
+            default:
+                $errors[] = 'Unknown upload error: ' . $file['error'];
+        }
         return $errors;
     }
     
     // Check file size
     if ($file['size'] > MAX_FILE_SIZE) {
         $errors[] = 'File size must be less than ' . (MAX_FILE_SIZE / 1024 / 1024) . 'MB';
+    }
+    
+    // Check if file is too small (optional)
+    if ($file['size'] < 100) {
+        $errors[] = 'File appears to be too small or corrupted';
     }
     
     // Check file type
@@ -198,6 +229,12 @@ function validateFile($file, $is_main = false) {
     $image_info = @getimagesize($file['tmp_name']);
     if (!$image_info) {
         $errors[] = 'Uploaded file is not a valid image';
+    }
+    
+    // Additional security: check MIME type
+    $allowed_mime_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
+    if ($image_info && !in_array($image_info['mime'], $allowed_mime_types)) {
+        $errors[] = 'Invalid image MIME type';
     }
     
     return $errors;
