@@ -22,7 +22,7 @@ define('DB_PORT', '10233');
 define('DB_NAME', 'db_e4a8923c');
 define('DB_USER', 'user_e38b806e');
 define('DB_PASS', 'e8334ec01a6d8bd8557ef57e5abfff50');
-define('BUSINESS_WHATSAPP', '2349160935693');
+define('BUSINESS_WHATSAPP', '2348090654510');
 
 // File upload configuration - MASSIVE LIMITS
 define('MAX_FILE_SIZE', 100 * 1024 * 1024); // 100MB per file
