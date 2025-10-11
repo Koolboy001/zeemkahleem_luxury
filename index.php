@@ -622,7 +622,7 @@ if (!empty($search)) {
             color: var(--text);
         }
 
-        /* Luxury Sliding Navigation Drawer */
+        /* Luxury Sliding Navigation Drawer with Scrollable Categories */
         .nav-drawer {
             position: fixed;
             top: 0;
@@ -685,12 +685,38 @@ if (!empty($search)) {
             box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.1), -5px -5px 15px rgba(255, 255, 255, 0.1);
         }
 
+        /* Scrollable Navigation Container */
+        .nav-links-container {
+            flex: 1;
+            overflow-y: auto;
+            max-height: calc(100vh - 300px);
+            padding-right: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .nav-links-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .nav-links-container::-webkit-scrollbar-track {
+            background: var(--bg);
+            border-radius: 10px;
+        }
+
+        .nav-links-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .nav-links-container::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
         .nav-links {
             list-style: none;
             display: flex;
             flex-direction: column;
             gap: 1rem;
-            flex: 1;
         }
 
         .nav-links a {
@@ -792,7 +818,7 @@ if (!empty($search)) {
             }
         }
 
-        /* Product Grid with Enhanced Responsiveness */
+        /* Enhanced Product Grid with Better Small Screen Support */
         .container {
             max-width: 1200px;
             margin: 4rem auto;
@@ -821,9 +847,34 @@ if (!empty($search)) {
 
         .products-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 2.5rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 6rem;
+        }
+
+        /* Ensure at least 2 products per row on very small screens */
+        @media (max-width: 480px) {
+            .products-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+            }
+            
+            .product-card {
+                padding: 1rem;
+                min-width: 0; /* Prevent overflow */
+            }
+            
+            .product-image {
+                height: 180px;
+            }
+            
+            .product-info h3 {
+                font-size: 1.1rem;
+            }
+            
+            .product-price {
+                font-size: 1.2rem;
+            }
         }
 
         /* Neomorphism Product Cards */
@@ -1003,6 +1054,104 @@ if (!empty($search)) {
             font-size: 0.9rem;
             opacity: 0.7;
             margin-top: 1rem;
+        }
+
+        /* Luxury Cart Notification */
+        .cart-notification {
+            position: fixed;
+            top: 100px;
+            right: 2rem;
+            background: var(--card);
+            padding: 1.5rem 2rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            z-index: 2001;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            max-width: 350px;
+        }
+
+        .cart-notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .cart-notification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            border-radius: 20px 20px 0 0;
+        }
+
+        .notification-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, var(--primary), var(--accent));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--secondary);
+            box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+            color: var(--primary);
+        }
+
+        .notification-message {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: var(--text);
+            cursor: pointer;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+            padding: 0.5rem;
+            border-radius: 50%;
+        }
+
+        .notification-close:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Enhanced Cart Icon Animation */
+        @keyframes cartBounce {
+            0%, 20%, 60%, 100% {
+                transform: scale(1);
+            }
+            40% {
+                transform: scale(1.2);
+            }
+            80% {
+                transform: scale(1.1);
+            }
+        }
+
+        .cart-bounce {
+            animation: cartBounce 0.6s ease;
         }
 
         /* Enhanced Product Modal with Neomorphism */
@@ -1368,6 +1517,12 @@ if (!empty($search)) {
             .nav-drawer {
                 width: 75%;
             }
+            
+            .cart-notification {
+                right: 1rem;
+                left: 1rem;
+                max-width: none;
+            }
         }
 
         @media (max-width: 576px) {
@@ -1513,7 +1668,7 @@ if (!empty($search)) {
         </div>
     </div>
 
-    <!-- Luxury Navigation Drawer -->
+    <!-- Luxury Navigation Drawer with Scrollable Categories -->
     <div class="nav-drawer" id="navDrawer">
         <div class="nav-header">
             <div class="nav-brand">ZEEMKAHLEEM LUXURY</div>
@@ -1526,21 +1681,24 @@ if (!empty($search)) {
             </form>
         </div>
 
-        <ul class="nav-links">
-            <li>
-                <a href="index.php" class="<?= (!$cat_filter && empty($search)) ? 'active' : '' ?>">
-                    <i class="fas fa-home"></i> Home
-                </a>
-            </li>
-            <?php foreach ($categories as $category): ?>
+        <!-- Scrollable Navigation Container -->
+        <div class="nav-links-container">
+            <ul class="nav-links">
                 <li>
-                    <a href="?cat=<?= $category['id'] ?>" 
-                       class="<?= ($cat_filter == $category['id']) ? 'active' : '' ?>">
-                        <i class="fas fa-tag"></i> <?= h($category['name']) ?>
+                    <a href="index.php" class="<?= (!$cat_filter && empty($search)) ? 'active' : '' ?>">
+                        <i class="fas fa-home"></i> Home
                     </a>
                 </li>
-            <?php endforeach; ?>
-        </ul>
+                <?php foreach ($categories as $category): ?>
+                    <li>
+                        <a href="?cat=<?= $category['id'] ?>" 
+                           class="<?= ($cat_filter == $category['id']) ? 'active' : '' ?>">
+                            <i class="fas fa-tag"></i> <?= h($category['name']) ?>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
 
         <div class="nav-footer">
             <div style="text-align: center; color: var(--text); opacity: 0.7; font-size: 0.9rem;">
@@ -1551,6 +1709,20 @@ if (!empty($search)) {
 
     <!-- Navigation Overlay -->
     <div class="nav-overlay" id="navOverlay" onclick="closeNavDrawer()"></div>
+
+    <!-- Luxury Cart Notification -->
+    <div class="cart-notification" id="cartNotification">
+        <div class="notification-icon">
+            <i class="fas fa-check"></i>
+        </div>
+        <div class="notification-content">
+            <div class="notification-title">Added to Cart</div>
+            <div class="notification-message" id="notificationMessage">Product successfully added to your shopping bag</div>
+        </div>
+        <button class="notification-close" onclick="hideNotification()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
 
     <!-- Enhanced Breadcrumb with Schema -->
     <?php if ($cat_filter > 0 && $current_category): ?>
@@ -1605,7 +1777,7 @@ if (!empty($search)) {
                     <?php foreach ($search_results as $product): 
                         $images = explode(',', $product['images']);
                     ?>
-                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)" itemscope itemtype="https://schema.org/Product">
+                        <div class="product-card" data-product-id="<?= $product['id'] ?>" itemscope itemtype="https://schema.org/Product">
                             <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy" itemprop="image">
                             <div class="product-info">
                                 <h3 itemprop="name"><?= h($product['name']) ?></h3>
@@ -1614,7 +1786,7 @@ if (!empty($search)) {
                                     <span itemprop="priceCurrency" content="NGN">₦</span>
                                     <span itemprop="price" content="<?= $product['price'] ?>"><?= number_format($product['price'], 2) ?></span>
                                 </div>
-                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
+                                <button class="add-to-cart" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
                                     <i class="fas fa-shopping-bag"></i> Add to Cart
                                 </button>
                             </div>
@@ -1644,7 +1816,7 @@ if (!empty($search)) {
                     <?php foreach ($category_products as $product): 
                         $images = explode(',', $product['images']);
                     ?>
-                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)" itemscope itemtype="https://schema.org/Product">
+                        <div class="product-card" data-product-id="<?= $product['id'] ?>" itemscope itemtype="https://schema.org/Product">
                             <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy" itemprop="image">
                             <div class="product-info">
                                 <h3 itemprop="name"><?= h($product['name']) ?></h3>
@@ -1652,7 +1824,7 @@ if (!empty($search)) {
                                     <span itemprop="priceCurrency" content="NGN">₦</span>
                                     <span itemprop="price" content="<?= $product['price'] ?>"><?= number_format($product['price'], 2) ?></span>
                                 </div>
-                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
+                                <button class="add-to-cart" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
                                     <i class="fas fa-shopping-bag"></i> Add to Cart
                                 </button>
                             </div>
@@ -1669,7 +1841,7 @@ if (!empty($search)) {
                     <?php foreach ($products as $product): 
                         $images = explode(',', $product['images']);
                     ?>
-                        <div class="product-card" onclick="openProductModal(<?= $product['id'] ?>)" itemscope itemtype="https://schema.org/Product">
+                        <div class="product-card" data-product-id="<?= $product['id'] ?>" itemscope itemtype="https://schema.org/Product">
                             <img src="uploads/<?= h($images[0]) ?>" alt="<?= h($product['name']) ?>" class="product-image" loading="lazy" itemprop="image">
                             <div class="product-info">
                                 <h3 itemprop="name"><?= h($product['name']) ?></h3>
@@ -1677,7 +1849,7 @@ if (!empty($search)) {
                                     <span itemprop="priceCurrency" content="NGN">₦</span>
                                     <span itemprop="price" content="<?= $product['price'] ?>"><?= number_format($product['price'], 2) ?></span>
                                 </div>
-                                <button class="add-to-cart" onclick="event.stopPropagation(); addToCart(<?= $product['id'] ?>)" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
+                                <button class="add-to-cart" itemprop="potentialAction" itemscope itemtype="https://schema.org/BuyAction">
                                     <i class="fas fa-shopping-bag"></i> Add to Cart
                                 </button>
                             </div>
@@ -1816,7 +1988,32 @@ if (!empty($search)) {
             document.getElementById('cartCount').textContent = count;
         }
 
-        function addToCart(productId) {
+        // Enhanced Cart Notification System
+        function showNotification(productName = null) {
+            const notification = document.getElementById('cartNotification');
+            const message = document.getElementById('notificationMessage');
+            
+            if (productName) {
+                message.textContent = `"${productName}" added to your shopping bag`;
+            } else {
+                message.textContent = 'Product successfully added to your shopping bag';
+            }
+            
+            notification.classList.add('show');
+            
+            // Auto hide after 4 seconds
+            setTimeout(() => {
+                hideNotification();
+            }, 4000);
+        }
+
+        function hideNotification() {
+            const notification = document.getElementById('cartNotification');
+            notification.classList.remove('show');
+        }
+
+        // Enhanced Add to Cart Function
+        function addToCart(productId, productName = null) {
             // Update localStorage
             let cart = JSON.parse(localStorage.getItem('cart')) || {};
             cart[productId] = (cart[productId] || 0) + 1;
@@ -1833,26 +2030,53 @@ if (!empty($search)) {
             .then(r => r.json())
             .then(d => {
                 if (d.ok) {
-                    document.getElementById('cartCount').textContent = d.count;
-                    
-                    // Animation feedback
-                    const btn = event.target;
-                    const originalText = btn.innerHTML;
-                    btn.innerHTML = '<i class="fas fa-check"></i> Added!';
-                    btn.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
-                    
-                    // Add cart icon animation
-                    const cartIcon = document.querySelector('.cart-icon');
-                    cartIcon.style.transform = 'scale(1.1)';
+                    // Update cart count with animation
+                    const cartCount = document.getElementById('cartCount');
+                    cartCount.textContent = d.count;
+                    cartCount.parentElement.classList.add('cart-bounce');
                     
                     setTimeout(() => {
-                        btn.innerHTML = originalText;
+                        cartCount.parentElement.classList.remove('cart-bounce');
+                    }, 600);
+                    
+                    // Show luxury notification
+                    showNotification(productName);
+                    
+                    // Button feedback animation
+                    const btn = event.target;
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check"></i> Added!';
+                    btn.style.background = 'linear-gradient(45deg, var(--primary), var(--accent))';
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
                         btn.style.background = '';
-                        cartIcon.style.transform = 'scale(1)';
                     }, 2000);
                 }
             })
             .catch(error => console.error('Error adding to cart:', error));
+        }
+
+        // Enhanced product card click handlers
+        function setupProductCards() {
+            document.querySelectorAll('.product-card').forEach(card => {
+                const productId = card.getAttribute('data-product-id');
+                const productName = card.querySelector('h3')?.textContent;
+                
+                card.addEventListener('click', function(e) {
+                    if (!e.target.closest('.add-to-cart')) {
+                        openProductModal(productId);
+                    }
+                });
+                
+                const addToCartBtn = card.querySelector('.add-to-cart');
+                if (addToCartBtn) {
+                    addToCartBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        addToCart(productId, productName);
+                    });
+                }
+            });
         }
 
         // Enhanced Product Modal
@@ -1885,7 +2109,7 @@ if (!empty($search)) {
                             <div class="product-price-large">₦${parseFloat(product.price).toFixed(2)}</div>
                             <p class="product-description">${product.description || 'Experience luxury and sophistication with this premium product. Crafted with attention to detail and designed for the discerning customer.'}</p>
                             <div class="action-buttons">
-                                <button class="btn-primary" onclick="addToCartFromModal(${product.id})">
+                                <button class="btn-primary" onclick="addToCartFromModal(${product.id}, '${product.name.replace(/'/g, "\\'")}')">
                                     <i class="fas fa-shopping-bag"></i> Add to Cart
                                 </button>
                                 <button class="btn-secondary" onclick="closeModal()">
@@ -1907,21 +2131,8 @@ if (!empty($search)) {
             }
         }
 
-        function addToCartFromModal(productId) {
-            cart[productId] = (cart[productId] || 0) + 1;
-            localStorage.setItem('cart', JSON.stringify(cart));
-            updateCartCount();
-            
-            // Animation feedback
-            const btn = document.querySelector('.btn-primary');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check"></i> Added to Cart!';
-            btn.style.background = 'linear-gradient(45deg, #28a745, #20c997)';
-            
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.style.background = '';
-            }, 2000);
+        function addToCartFromModal(productId, productName) {
+            addToCart(productId, productName);
         }
 
         function changeMainImage(imageSrc, thumbnail) {
@@ -1967,37 +2178,6 @@ if (!empty($search)) {
             }
         }
 
-        // Initialize
-        updateCartCount();
-
-        // Remove loading screen after animation
-        setTimeout(() => {
-            document.querySelector('.loading-screen').style.display = 'none';
-        }, 3000);
-
-        // Add intersection observer for animations
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
-
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
-
-        // Observe all product cards
-        document.querySelectorAll('.product-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(30px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
-        });
-
         // Sync cart with server
         function syncCartWithServer() {
             const localCart = JSON.parse(localStorage.getItem('cart')) || {};
@@ -2028,10 +2208,39 @@ if (!empty($search)) {
             }
         }
 
-        // Call sync when page loads
+        // Initialize enhanced functionality
         document.addEventListener('DOMContentLoaded', function() {
             syncCartWithServer();
             updateCartCount();
+            setupProductCards();
+            
+            // Remove loading screen after animation
+            setTimeout(() => {
+                document.querySelector('.loading-screen').style.display = 'none';
+            }, 3000);
+        });
+
+        // Add intersection observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // Observe all product cards
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+            observer.observe(card);
         });
     </script>
 </body>
